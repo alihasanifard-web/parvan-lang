@@ -1,0 +1,19 @@
+[package]
+name = "parvan"
+version = "0.1.0"
+edition = "2021"
+authors = [
+    "Ali Hasanifard <hasanifardalipa@gmail.com>",
+    "Ehsan Fazlinejad",
+    "Amirmahdi Shahbazi"
+]
+description = "Parvan Programming Language (ParvanLang) - Modern, fast, and elegant interpreted language implemented in Rust"
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
+colored = "2.1.0"
+
+[[bin]]
+name = "parvan"
+path = "src/main.rs"

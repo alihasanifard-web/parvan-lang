@@ -1,0 +1,75 @@
+#[derive(Debug, PartialEq, Clone)]
+pub enum TokenKind {
+    // End of file / Illegal
+    Eof,
+    Illegal(char),
+
+    // Identifiers & Literals
+    Ident(String),
+    Int(i64),
+    Float(f64),
+    Str(String),
+    Bool(bool),
+    Nil,
+
+    // Operators
+    Plus,       // +
+    Minus,      // -
+    Asterisk,   // *
+    Slash,      // /
+    Percent,    // %
+    Bang,       // !
+    Assign,     // =
+    PlusAssign, // +=
+    MinusAssign,// -=
+
+    // Comparisons
+    Eq,     // ==
+    NotEq,  // !=
+    Lt,     // <
+    Lte,    // <=
+    Gt,     // >
+    Gte,    // >=
+    And,    // &&
+    Or,     // ||
+
+    // Delimiters
+    Comma,      // ,
+    Colon,      // :
+    Semicolon,  // ;
+    LParen,     // (
+    RParen,     // )
+    LBrace,     // {
+    RBrace,     // }
+    LBracket,   // [
+    RBracket,   // ]
+    Arrow,      // ->
+
+    // Keywords (English + Persian Aliases!)
+    Let,        // let / بگذار / متغیر
+    Const,      // const / ثابت
+    Fn,         // fn / func / تابع
+    Return,     // return / بازگردان
+    If,         // if / اگر
+    Else,       // else / وگرنه
+    While,      // while / تا_زمانی_که
+    For,        // for / برای
+    In,         // in / در
+    Break,      // break / شکست
+    Continue,   // continue / ادامه
+    Print,      // print / چاپ
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub literal: String,
+    pub line: usize,
+    pub column: usize,
+}
+
+impl Token {
+    pub fn new(kind: TokenKind, literal: String, line: usize, column: usize) -> Self {
+        Self { kind, literal, line, column }
+    }
+}

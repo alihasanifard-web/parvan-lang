@@ -1,0 +1,16 @@
+// Fibonacci Algorithm in ParvanLang
+// زبان برنامه‌نویسی پروان
+
+fn fib(n) {
+    if n <= 1 {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+print("=== محاسبه سری فیبوناچی در پروان ===");
+
+let count = 12;
+for i in range(count) {
+    print("fib(" + to_str(i) + ") =", fib(i));
+}

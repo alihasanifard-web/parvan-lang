@@ -1,0 +1,544 @@
+use crate::ast::*;
+use crate::lexer::Lexer;
+use crate::token::{Token, TokenKind};
+
+#[derive(PartialEq, PartialOrd)]
+enum Precedence {
+    Lowest = 1,
+    Or = 2,         // ||
+    And = 3,        // &&
+    Equals = 4,     // ==, !=
+    LessGreater = 5,// >, <, >=, <=
+    Sum = 6,        // +, -
+    Product = 7,    // *, /, %
+    Prefix = 8,     // -X, !X
+    Call = 9,       // my_func(X)
+    Index = 10,     // array[index]
+}
+
+impl Precedence {
+    fn from_token(token: &TokenKind) -> Precedence {
+        match token {
+            TokenKind::Or => Precedence::Or,
+            TokenKind::And => Precedence::And,
+            TokenKind::Eq | TokenKind::NotEq => Precedence::Equals,
+            TokenKind::Lt | TokenKind::Lte | TokenKind::Gt | TokenKind::Gte => Precedence::LessGreater,
+            TokenKind::Plus | TokenKind::Minus => Precedence::Sum,
+            TokenKind::Asterisk | TokenKind::Slash | TokenKind::Percent => Precedence::Product,
+            TokenKind::LParen => Precedence::Call,
+            TokenKind::LBracket => Precedence::Index,
+            _ => Precedence::Lowest,
+        }
+    }
+}
+
+pub struct Parser {
+    lexer: Lexer,
+    cur_token: Token,
+    peek_token: Token,
+    pub errors: Vec<String>,
+}
+
+impl Parser {
+    pub fn new(mut lexer: Lexer) -> Self {
+        let cur = lexer.next_token();
+        let peek = lexer.next_token();
+        Self {
+            lexer,
+            cur_token: cur,
+            peek_token: peek,
+            errors: Vec::new(),
+        }
+    }
+
+    fn next_token(&mut self) {
+        self.cur_token = std::mem::replace(&mut self.peek_token, self.lexer.next_token());
+    }
+
+    fn cur_token_is(&self, kind: &TokenKind) -> bool {
+        std::mem::discriminant(&self.cur_token.kind) == std::mem::discriminant(kind)
+    }
+
+    fn peek_token_is(&self, kind: &TokenKind) -> bool {
+        std::mem::discriminant(&self.peek_token.kind) == std::mem::discriminant(kind)
+    }
+
+    fn expect_peek(&mut self, kind: TokenKind) -> bool {
+        if self.peek_token_is(&kind) {
+            self.next_token();
+            true
+        } else {
+            self.peek_error(&kind);
+            false
+        }
+    }
+
+    fn peek_error(&mut self, expected: &TokenKind) {
+        let msg = format!(
+            "خطای نحو [سطر {}, ستون {}]: انتظار می‌رفت توکن {:?} باشد، اما {:?} ('{}') دریافت شد.",
+            self.peek_token.line, self.peek_token.column, expected, self.peek_token.kind, self.peek_token.literal
+        );
+        self.errors.push(msg);
+    }
+
+    pub fn parse_program(&mut self) -> Program {
+        let mut program = Program {
+            statements: Vec::new(),
+        };
+
+        while self.cur_token.kind != TokenKind::Eof {
+            if let Some(stmt) = self.parse_statement() {
+                program.statements.push(stmt);
+            }
+            self.next_token();
+        }
+
+        program
+    }
+
+    fn parse_statement(&mut self) -> Option<Stmt> {
+        match &self.cur_token.kind {
+            TokenKind::Let => self.parse_let_statement(false),
+            TokenKind::Const => self.parse_let_statement(true),
+            TokenKind::Return => self.parse_return_statement(),
+            TokenKind::If => self.parse_if_statement(),
+            TokenKind::While => self.parse_while_statement(),
+            TokenKind::For => self.parse_for_statement(),
+            TokenKind::Break => {
+                let tok = self.cur_token.clone();
+                if self.peek_token_is(&TokenKind::Semicolon) {
+                    self.next_token();
+                }
+                Some(Stmt::Break(tok))
+            }
+            TokenKind::Continue => {
+                let tok = self.cur_token.clone();
+                if self.peek_token_is(&TokenKind::Semicolon) {
+                    self.next_token();
+                }
+                Some(Stmt::Continue(tok))
+            }
+            TokenKind::Print => self.parse_print_statement(),
+            _ => self.parse_expression_statement(),
+        }
+    }
+
+    fn parse_let_statement(&mut self, is_const: bool) -> Option<Stmt> {
+        let let_token = self.cur_token.clone();
+
+        if let TokenKind::Ident(ref name) = self.peek_token.kind.clone() {
+            self.next_token();
+            let var_name = name.clone();
+
+            if !self.expect_peek(TokenKind::Assign) {
+                return None;
+            }
+
+            self.next_token();
+            let val = self.parse_expression(Precedence::Lowest)?;
+
+            if self.peek_token_is(&TokenKind::Semicolon) {
+                self.next_token();
+            }
+
+            if is_const {
+                Some(Stmt::Const {
+                    name: var_name,
+                    value: val,
+                    token: let_token,
+                })
+            } else {
+                Some(Stmt::Let {
+                    name: var_name,
+                    value: val,
+                    token: let_token,
+                })
+            }
+        } else {
+            self.peek_error(&TokenKind::Ident("".to_string()));
+            None
+        }
+    }
+
+    fn parse_return_statement(&mut self) -> Option<Stmt> {
+        let tok = self.cur_token.clone();
+        self.next_token();
+
+        if self.cur_token_is(&TokenKind::Semicolon) {
+            return Some(Stmt::Return {
+                value: None,
+                token: tok,
+            });
+        }
+
+        let expr = self.parse_expression(Precedence::Lowest);
+        if self.peek_token_is(&TokenKind::Semicolon) {
+            self.next_token();
+        }
+
+        Some(Stmt::Return {
+            value: expr,
+            token: tok,
+        })
+    }
+
+    fn parse_print_statement(&mut self) -> Option<Stmt> {
+        let tok = self.cur_token.clone();
+        if !self.expect_peek(TokenKind::LParen) {
+            return None;
+        }
+
+        let args = self.parse_expression_list(TokenKind::RParen)?;
+        if self.peek_token_is(&TokenKind::Semicolon) {
+            self.next_token();
+        }
+
+        Some(Stmt::Print { args, token: tok })
+    }
+
+    fn parse_if_statement(&mut self) -> Option<Stmt> {
+        let tok = self.cur_token.clone();
+        self.next_token();
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(TokenKind::LBrace) {
+            return None;
+        }
+
+        let consequence = self.parse_block_statement();
+        let mut alternative = None;
+
+        if self.peek_token_is(&TokenKind::Else) {
+            self.next_token();
+
+            if self.peek_token_is(&TokenKind::If) {
+                self.next_token();
+                let nested_if = self.parse_if_statement()?;
+                alternative = Some(BlockStmt {
+                    token: tok.clone(),
+                    statements: vec![nested_if],
+                });
+            } else if self.expect_peek(TokenKind::LBrace) {
+                alternative = Some(self.parse_block_statement());
+            }
+        }
+
+        Some(Stmt::If {
+            condition,
+            consequence,
+            alternative,
+            token: tok,
+        })
+    }
+
+    fn parse_while_statement(&mut self) -> Option<Stmt> {
+        let tok = self.cur_token.clone();
+        self.next_token();
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(TokenKind::LBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+        Some(Stmt::While {
+            condition,
+            body,
+            token: tok,
+        })
+    }
+
+    fn parse_for_statement(&mut self) -> Option<Stmt> {
+        let tok = self.cur_token.clone();
+        let var_name = if let TokenKind::Ident(ref name) = self.peek_token.kind.clone() {
+            self.next_token();
+            name.clone()
+        } else {
+            return None;
+        };
+
+        if !self.expect_peek(TokenKind::In) {
+            return None;
+        }
+
+        self.next_token();
+        let iterable = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(TokenKind::LBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+        Some(Stmt::For {
+            var: var_name,
+            iterable,
+            body,
+            token: tok,
+        })
+    }
+
+    fn parse_block_statement(&mut self) -> BlockStmt {
+        let tok = self.cur_token.clone();
+        let mut statements = Vec::new();
+
+        self.next_token();
+
+        while !self.cur_token_is(&TokenKind::RBrace) && !self.cur_token_is(&TokenKind::Eof) {
+            if let Some(stmt) = self.parse_statement() {
+                statements.push(stmt);
+            }
+            self.next_token();
+        }
+
+        BlockStmt {
+            token: tok,
+            statements,
+        }
+    }
+
+    fn parse_expression_statement(&mut self) -> Option<Stmt> {
+        // Check for assignment: ident = expr;
+        if let TokenKind::Ident(ref name) = self.cur_token.kind.clone() {
+            if self.peek_token_is(&TokenKind::Assign) {
+                let id_tok = self.cur_token.clone();
+                let var_name = name.clone();
+                self.next_token(); // on '='
+                self.next_token(); // on start of expr
+                let val = self.parse_expression(Precedence::Lowest)?;
+                if self.peek_token_is(&TokenKind::Semicolon) {
+                    self.next_token();
+                }
+                return Some(Stmt::Expr(Expr::Assign(var_name, Box::new(val), id_tok)));
+            } else if self.peek_token_is(&TokenKind::PlusAssign) {
+                let id_tok = self.cur_token.clone();
+                let var_name = name.clone();
+                self.next_token();
+                self.next_token();
+                let right = self.parse_expression(Precedence::Lowest)?;
+                if self.peek_token_is(&TokenKind::Semicolon) {
+                    self.next_token();
+                }
+                let add_expr = Expr::Infix(
+                    Box::new(Expr::Ident(var_name.clone(), id_tok.clone())),
+                    InfixOp::Plus,
+                    Box::new(right),
+                    id_tok.clone(),
+                );
+                return Some(Stmt::Expr(Expr::Assign(var_name, Box::new(add_expr), id_tok)));
+            }
+        }
+
+        let expr = self.parse_expression(Precedence::Lowest)?;
+        if self.peek_token_is(&TokenKind::Semicolon) {
+            self.next_token();
+        }
+        Some(Stmt::Expr(expr))
+    }
+
+    fn parse_expression(&mut self, precedence: Precedence) -> Option<Expr> {
+        let mut left = self.parse_prefix()?;
+
+        while !self.peek_token_is(&TokenKind::Semicolon) && precedence < Precedence::from_token(&self.peek_token.kind) {
+            match self.peek_token.kind {
+                TokenKind::Plus
+                | TokenKind::Minus
+                | TokenKind::Asterisk
+                | TokenKind::Slash
+                | TokenKind::Percent
+                | TokenKind::Eq
+                | TokenKind::NotEq
+                | TokenKind::Lt
+                | TokenKind::Lte
+                | TokenKind::Gt
+                | TokenKind::Gte
+                | TokenKind::And
+                | TokenKind::Or => {
+                    self.next_token();
+                    left = self.parse_infix(left)?;
+                }
+                TokenKind::LParen => {
+                    self.next_token();
+                    left = self.parse_call_expression(left)?;
+                }
+                TokenKind::LBracket => {
+                    self.next_token();
+                    left = self.parse_index_expression(left)?;
+                }
+                _ => return Some(left),
+            }
+        }
+
+        Some(left)
+    }
+
+    fn parse_prefix(&mut self) -> Option<Expr> {
+        match &self.cur_token.kind {
+            TokenKind::Ident(name) => Some(Expr::Ident(name.clone(), self.cur_token.clone())),
+            TokenKind::Int(val) => Some(Expr::Int(*val, self.cur_token.clone())),
+            TokenKind::Float(val) => Some(Expr::Float(*val, self.cur_token.clone())),
+            TokenKind::Str(val) => Some(Expr::Str(val.clone(), self.cur_token.clone())),
+            TokenKind::Bool(val) => Some(Expr::Bool(*val, self.cur_token.clone())),
+            TokenKind::Nil => Some(Expr::Nil(self.cur_token.clone())),
+            TokenKind::Bang => {
+                let tok = self.cur_token.clone();
+                self.next_token();
+                let right = self.parse_expression(Precedence::Prefix)?;
+                Some(Expr::Prefix(PrefixOp::Bang, Box::new(right), tok))
+            }
+            TokenKind::Minus => {
+                let tok = self.cur_token.clone();
+                self.next_token();
+                let right = self.parse_expression(Precedence::Prefix)?;
+                Some(Expr::Prefix(PrefixOp::Minus, Box::new(right), tok))
+            }
+            TokenKind::LParen => {
+                self.next_token();
+                let expr = self.parse_expression(Precedence::Lowest);
+                if !self.expect_peek(TokenKind::RParen) {
+                    return None;
+                }
+                expr
+            }
+            TokenKind::LBracket => self.parse_array_literal(),
+            TokenKind::Fn => self.parse_function_literal(),
+            _ => {
+                self.errors.push(format!(
+                    "خطای عبارت: توکن غیرمنتظره {:?} در سطر {}",
+                    self.cur_token.kind, self.cur_token.line
+                ));
+                None
+            }
+        }
+    }
+
+    fn parse_infix(&mut self, left: Expr) -> Option<Expr> {
+        let tok = self.cur_token.clone();
+        let op = match &tok.kind {
+            TokenKind::Plus => InfixOp::Plus,
+            TokenKind::Minus => InfixOp::Minus,
+            TokenKind::Asterisk => InfixOp::Multiply,
+            TokenKind::Slash => InfixOp::Divide,
+            TokenKind::Percent => InfixOp::Modulo,
+            TokenKind::Eq => InfixOp::Equal,
+            TokenKind::NotEq => InfixOp::NotEqual,
+            TokenKind::Lt => InfixOp::LessThan,
+            TokenKind::Lte => InfixOp::LessEqual,
+            TokenKind::Gt => InfixOp::GreaterThan,
+            TokenKind::Gte => InfixOp::GreaterEqual,
+            TokenKind::And => InfixOp::And,
+            TokenKind::Or => InfixOp::Or,
+            _ => return None,
+        };
+
+        let precedence = Precedence::from_token(&tok.kind);
+        self.next_token();
+        let right = self.parse_expression(precedence)?;
+
+        Some(Expr::Infix(Box::new(left), op, Box::new(right), tok))
+    }
+
+    fn parse_call_expression(&mut self, function: Expr) -> Option<Expr> {
+        let tok = self.cur_token.clone();
+        let args = self.parse_expression_list(TokenKind::RParen)?;
+        Some(Expr::Call(Box::new(function), args, tok))
+    }
+
+    fn parse_index_expression(&mut self, left: Expr) -> Option<Expr> {
+        let tok = self.cur_token.clone();
+        self.next_token();
+        let index = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(TokenKind::RBracket) {
+            return None;
+        }
+        Some(Expr::Index(Box::new(left), Box::new(index), tok))
+    }
+
+    fn parse_array_literal(&mut self) -> Option<Expr> {
+        let tok = self.cur_token.clone();
+        let elements = self.parse_expression_list(TokenKind::RBracket)?;
+        Some(Expr::Array(elements, tok))
+    }
+
+    fn parse_expression_list(&mut self, end: TokenKind) -> Option<Vec<Expr>> {
+        let mut list = Vec::new();
+
+        if self.peek_token_is(&end) {
+            self.next_token();
+            return Some(list);
+        }
+
+        self.next_token();
+        list.push(self.parse_expression(Precedence::Lowest)?);
+
+        while self.peek_token_is(&TokenKind::Comma) {
+            self.next_token();
+            self.next_token();
+            list.push(self.parse_expression(Precedence::Lowest)?);
+        }
+
+        if !self.expect_peek(end) {
+            return None;
+        }
+
+        Some(list)
+    }
+
+    fn parse_function_literal(&mut self) -> Option<Expr> {
+        let tok = self.cur_token.clone();
+        let mut func_name = None;
+
+        // Named function e.g. fn add(a, b) { ... }
+        if let TokenKind::Ident(ref name) = self.peek_token.kind.clone() {
+            self.next_token();
+            func_name = Some(name.clone());
+        }
+
+        if !self.expect_peek(TokenKind::LParen) {
+            return None;
+        }
+
+        let params = self.parse_function_params()?;
+
+        if !self.expect_peek(TokenKind::LBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        Some(Expr::Function {
+            name: func_name,
+            params,
+            body,
+            token: tok,
+        })
+    }
+
+    fn parse_function_params(&mut self) -> Option<Vec<String>> {
+        let mut params = Vec::new();
+
+        if self.peek_token_is(&TokenKind::RParen) {
+            self.next_token();
+            return Some(params);
+        }
+
+        self.next_token();
+        if let TokenKind::Ident(ref name) = self.cur_token.kind {
+            params.push(name.clone());
+        }
+
+        while self.peek_token_is(&TokenKind::Comma) {
+            self.next_token();
+            self.next_token();
+            if let TokenKind::Ident(ref name) = self.cur_token.kind {
+                params.push(name.clone());
+            }
+        }
+
+        if !self.expect_peek(TokenKind::RParen) {
+            return None;
+        }
+
+        Some(params)
+    }
+}
