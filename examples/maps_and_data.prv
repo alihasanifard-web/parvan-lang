@@ -1,0 +1,35 @@
+// Complex data structures: Dictionaries (Maps) & Dynamic Updates
+// دمو دیکشنری‌ها، ساختارهای کلید-مقدار و تغییرات ایندکس
+
+let user = {
+    "name": "Ali",
+    "team": "Parvan Core",
+    "role": "Architect",
+    "contributions": 42
+};
+
+print("User profile loaded:");
+print("Name:", user.name);
+print("Team:", user.team);
+print("Role:", user.role);
+
+// Dynamic update via index assignment
+user["contributions"] = 43;
+user["status"] = "Active";
+
+print("Updated profile:", user);
+print("Keys in user map:", keys(user));
+print("Values in user map:", values(user));
+print("Has role field?:", contains(user, "role"));
+
+// Nested Map and Array
+let project = {
+    "title": "ParvanLang",
+    "members": ["Ali", "Ehsan", "Amirmehdi"],
+    "version": "1.1.0"
+};
+
+print("Project title:", project.title);
+print("First member:", project.members[0]);
+push(project.members, "OpenSource Contributor");
+print("All members now:", project.members);

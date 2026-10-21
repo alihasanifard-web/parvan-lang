@@ -1,16 +1,8 @@
-mod ast;
-mod evaluator;
-mod lexer;
-mod object;
-mod parser;
-mod stdlib;
-mod token;
-
 use colored::*;
-use evaluator::eval_program;
-use lexer::Lexer;
-use object::Environment;
-use parser::Parser;
+use parvan::evaluator::eval_program;
+use parvan::lexer::Lexer;
+use parvan::object::{self, Environment};
+use parvan::parser::Parser;
 use std::cell::RefCell;
 use std::env;
 use std::fs;

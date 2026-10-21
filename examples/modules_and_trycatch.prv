@@ -1,0 +1,29 @@
+// Modules & Error Handling Demo in ParvanLang
+// مدیریت استثناها با try/catch و ورود ماژول‌ها با import
+
+import "examples/math_utils.prv";
+
+print("--- استفاده از ماژول math_utils.prv ---");
+print("2 ^ 8 =", power(2, 8));
+print("5! =", factorial(5));
+
+print("\n--- تست مدیریت خطا با try/catch ---");
+
+try {
+    print("در حال انجام تقسیم بحرانی...");
+    let zero = 0;
+    let crash = 100 / zero;
+    print("این خط هرگز نباید اجرا شود!");
+} catch (error) {
+    print("✓ خطا با موفقیت کنترل شد:", error);
+}
+
+try {
+    let arr = [10, 20, 30];
+    print("دسترسی به ایندکس نامعتبر...");
+    let val = arr[99];
+} catch (e) {
+    print("✓ خطای آرایه دریافت شد:", e);
+}
+
+print("\nسیستم پروان پایدار است و به اجرای برنامه ادامه می‌دهد! ✨");

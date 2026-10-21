@@ -1,0 +1,98 @@
+#[cfg(test)]
+mod tests {
+    use parvan::lexer::Lexer;
+    use parvan::parser::Parser;
+    use parvan::evaluator::eval_program;
+    use parvan::object::{Environment, Object};
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    fn test_eval(input: &str) -> Result<Object, String> {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        if !parser.errors.is_empty() {
+            return Err(format!("Parse errors: {:?}", parser.errors));
+        }
+        let env = Rc::new(RefCell::new(Environment::new()));
+        eval_program(&program, env)
+    }
+
+    #[test]
+    fn test_integer_arithmetic() {
+        assert_eq!(test_eval("5 + 5 * 2;").unwrap(), Object::Int(15));
+        assert_eq!(test_eval("(5 + 5) * 2;").unwrap(), Object::Int(20));
+        assert_eq!(test_eval("100 / 4 - 5;").unwrap(), Object::Int(20));
+        assert_eq!(test_eval("17 % 5;").unwrap(), Object::Int(2));
+    }
+
+    #[test]
+    fn test_boolean_logic() {
+        assert_eq!(test_eval("true && false;").unwrap(), Object::Bool(false));
+        assert_eq!(test_eval("true || false;").unwrap(), Object::Bool(true));
+        assert_eq!(test_eval("!true;").unwrap(), Object::Bool(false));
+        assert_eq!(test_eval("10 > 5;").unwrap(), Object::Bool(true));
+        assert_eq!(test_eval("10 == 10;").unwrap(), Object::Bool(true));
+        assert_eq!(test_eval("10 != 5;").unwrap(), Object::Bool(true));
+    }
+
+    #[test]
+    fn test_string_concatenation_and_methods() {
+        let res = test_eval(r#"
+            let a = "Parvan";
+            let b = "Lang";
+            let c = a + " " + b;
+            uppercase(c);
+        "#).unwrap();
+        assert_eq!(res, Object::Str("PARVAN LANG".to_string()));
+    }
+
+    #[test]
+    fn test_closures_and_recursion() {
+        let res = test_eval(r#"
+            fn fib(n) {
+                if n <= 1 { return n; }
+                return fib(n - 1) + fib(n - 2);
+            }
+            fib(7);
+        "#).unwrap();
+        assert_eq!(res, Object::Int(13));
+    }
+
+    #[test]
+    fn test_maps_and_index_assignment() {
+        let res = test_eval(r#"
+            let m = {"key": 100};
+            m["key"] = 250;
+            m.key;
+        "#).unwrap();
+        assert_eq!(res, Object::Int(250));
+    }
+
+    #[test]
+    fn test_persian_bilingual_keywords() {
+        let res = test_eval(r#"
+            متغیر مقدار = 50;
+            اگر مقدار > 20 {
+                بازگردان "پیروز";
+            } وگرنه {
+                بازگردان "شکست";
+            }
+        "#).unwrap();
+        assert_eq!(res, Object::Str("پیروز".to_string()));
+    }
+
+    #[test]
+    fn test_try_catch_resilience() {
+        let res = test_eval(r#"
+            let caught = false;
+            try {
+                let x = 10 / 0;
+            } catch (err) {
+                caught = true;
+            }
+            caught;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+}

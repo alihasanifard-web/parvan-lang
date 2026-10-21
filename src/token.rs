@@ -37,6 +37,7 @@ pub enum TokenKind {
     Comma,      // ,
     Colon,      // :
     Semicolon,  // ;
+    Dot,        // .
     LParen,     // (
     RParen,     // )
     LBrace,     // {
@@ -58,6 +59,9 @@ pub enum TokenKind {
     Break,      // break / شکست
     Continue,   // continue / ادامه
     Print,      // print / چاپ
+    Import,     // import / وارد_کن
+    Try,        // try / تلاش
+    Catch,      // catch / خطا
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -177,6 +177,10 @@ impl Lexer {
                 self.read_char();
                 Token::new(TokenKind::Semicolon, ";".to_string(), line, col)
             }
+            Some('.') => {
+                self.read_char();
+                Token::new(TokenKind::Dot, ".".to_string(), line, col)
+            }
             Some(':') => {
                 self.read_char();
                 Token::new(TokenKind::Colon, ":".to_string(), line, col)
@@ -250,6 +254,9 @@ impl Lexer {
             "break" => TokenKind::Break,
             "continue" => TokenKind::Continue,
             "print" => TokenKind::Print,
+            "import" => TokenKind::Import,
+            "try" => TokenKind::Try,
+            "catch" => TokenKind::Catch,
             "true" => TokenKind::Bool(true),
             "false" => TokenKind::Bool(false),
             "nil" | "null" => TokenKind::Nil,
@@ -267,6 +274,9 @@ impl Lexer {
             "شکست" => TokenKind::Break,
             "ادامه" => TokenKind::Continue,
             "چاپ" => TokenKind::Print,
+            "وارد_کن" | "پیوست" => TokenKind::Import,
+            "تلاش" => TokenKind::Try,
+            "خطا" | "گرفتن_خطا" => TokenKind::Catch,
             "درست" => TokenKind::Bool(true),
             "غلط" => TokenKind::Bool(false),
             "هیچ" => TokenKind::Nil,

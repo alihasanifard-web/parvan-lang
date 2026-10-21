@@ -16,6 +16,16 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "to_str" | "به_متن" => Some(Object::Builtin(builtin_to_str)),
         "abs" | "قدر_مطلق" => Some(Object::Builtin(builtin_abs)),
         "sqrt" | "جذر" => Some(Object::Builtin(builtin_sqrt)),
+        "keys" | "کلیدها" => Some(Object::Builtin(builtin_keys)),
+        "values" | "مقادیر" => Some(Object::Builtin(builtin_values)),
+        "contains" | "شامل_است" => Some(Object::Builtin(builtin_contains)),
+        "read_file" | "خواندن_فایل" => Some(Object::Builtin(builtin_read_file)),
+        "write_file" | "نوشتن_فایل" => Some(Object::Builtin(builtin_write_file)),
+        "split" | "تفکیک" => Some(Object::Builtin(builtin_split)),
+        "join" | "پیوستن" => Some(Object::Builtin(builtin_join)),
+        "trim" | "پیرایش" => Some(Object::Builtin(builtin_trim)),
+        "uppercase" | "بزرگ" => Some(Object::Builtin(builtin_uppercase)),
+        "lowercase" | "کوچک" => Some(Object::Builtin(builtin_lowercase)),
         _ => None,
     }
 }
@@ -27,6 +37,7 @@ fn builtin_len(args: Vec<Object>) -> Result<Object, String> {
     match &args[0] {
         Object::Str(s) => Ok(Object::Int(s.chars().count() as i64)),
         Object::Array(arr) => Ok(Object::Int(arr.borrow().len() as i64)),
+        Object::Map(m) => Ok(Object::Int(m.borrow().len() as i64)),
         _ => Err(format!("تابع len روی نوع داده '{}' پشتیبانی نمی‌شود.", args[0].type_name())),
     }
 }
@@ -190,5 +201,148 @@ fn builtin_sqrt(args: Vec<Object>) -> Result<Object, String> {
             Ok(Object::Float(f.sqrt()))
         }
         _ => Err("تابع sqrt فقط روی اعداد کار می‌کند.".to_string()),
+    }
+}
+
+fn builtin_keys(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع keys یک آرگومان (دیکشنری) می‌پذیرد.".to_string());
+    }
+    match &args[0] {
+        Object::Map(m) => {
+            let list: Vec<Object> = m.borrow().keys().map(|k| Object::Str(k.clone())).collect();
+            Ok(Object::Array(Rc::new(RefCell::new(list))))
+        }
+        _ => Err("آرگومان تابع keys باید دیکشنری باشد.".to_string()),
+    }
+}
+
+fn builtin_values(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع values یک آرگومان (دیکشنری) می‌پذیرد.".to_string());
+    }
+    match &args[0] {
+        Object::Map(m) => {
+            let list: Vec<Object> = m.borrow().values().cloned().collect();
+            Ok(Object::Array(Rc::new(RefCell::new(list))))
+        }
+        _ => Err("آرگومان تابع values باید دیکشنری باشد.".to_string()),
+    }
+}
+
+fn builtin_contains(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 2 {
+        return Err("تابع contains دو آرگومان می‌پذیرد: (مجموعه، آیتم)".to_string());
+    }
+    match (&args[0], &args[1]) {
+        (Object::Map(m), Object::Str(k)) => Ok(Object::Bool(m.borrow().contains_key(k))),
+        (Object::Array(arr), target) => {
+            let found = arr.borrow().iter().any(|item| item == target);
+            Ok(Object::Bool(found))
+        }
+        (Object::Str(s), Object::Str(sub)) => Ok(Object::Bool(s.contains(sub))),
+        _ => Err("تابع contains روی این نوع داده‌ها پشتیبانی نمی‌شود.".to_string()),
+    }
+}
+
+fn builtin_read_file(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع read_file نیازمند یک مسیر فایل متنی است.".to_string());
+    }
+    match &args[0] {
+        Object::Str(path) => {
+            let content = std::fs::read_to_string(path)
+                .map_err(|e| format!("خطای خواندن فایل '{}': {}", path, e))?;
+            Ok(Object::Str(content))
+        }
+        _ => Err("مسیر فایل باید رشته باشد.".to_string()),
+    }
+}
+
+fn builtin_write_file(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 2 {
+        return Err("تابع write_file دو آرگومان می‌پذیرد: (مسیر_فایل، متن)".to_string());
+    }
+    match (&args[0], &args[1]) {
+        (Object::Str(path), Object::Str(content)) => {
+            std::fs::write(path, content)
+                .map_err(|e| format!("خطای نوشتن در فایل '{}': {}", path, e))?;
+            Ok(Object::Bool(true))
+        }
+        _ => Err("آرگومان‌های write_file باید هر دو از نوع رشته باشند.".to_string()),
+    }
+}
+
+fn builtin_split(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 1 || args.len() > 2 {
+        return Err("تابع split یک یا دو آرگومان می‌پذیرد: (متن, جداکننده)".to_string());
+    }
+    let sep = if args.len() == 2 {
+        match &args[1] {
+            Object::Str(s) => s.clone(),
+            _ => return Err("جداکننده باید رشته باشد.".to_string()),
+        }
+    } else {
+        " ".to_string()
+    };
+
+    match &args[0] {
+        Object::Str(s) => {
+            let parts: Vec<Object> = s.split(&sep).map(|p| Object::Str(p.to_string())).collect();
+            Ok(Object::Array(Rc::new(RefCell::new(parts))))
+        }
+        _ => Err("آرگومان تابع split باید رشته باشد.".to_string()),
+    }
+}
+
+fn builtin_join(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 1 || args.len() > 2 {
+        return Err("تابع join یک یا دو آرگومان می‌پذیرد: (آرایه, جداکننده)".to_string());
+    }
+    let sep = if args.len() == 2 {
+        match &args[1] {
+            Object::Str(s) => s.clone(),
+            _ => return Err("جداکننده باید رشته باشد.".to_string()),
+        }
+    } else {
+        "".to_string()
+    };
+
+    match &args[0] {
+        Object::Array(arr) => {
+            let str_parts: Vec<String> = arr.borrow().iter().map(|item| item.to_string()).collect();
+            Ok(Object::Str(str_parts.join(&sep)))
+        }
+        _ => Err("آرگومان اول تابع join باید آرایه باشد.".to_string()),
+    }
+}
+
+fn builtin_trim(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع trim یک آرگومان رشته می‌پذیرد.".to_string());
+    }
+    match &args[0] {
+        Object::Str(s) => Ok(Object::Str(s.trim().to_string())),
+        _ => Err("آرگومان تابع trim باید رشته باشد.".to_string()),
+    }
+}
+
+fn builtin_uppercase(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع uppercase یک آرگومان می‌پذیرد.".to_string());
+    }
+    match &args[0] {
+        Object::Str(s) => Ok(Object::Str(s.to_uppercase())),
+        _ => Err("آرگومان تابع uppercase باید رشته باشد.".to_string()),
+    }
+}
+
+fn builtin_lowercase(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع lowercase یک آرگومان می‌پذیرد.".to_string());
+    }
+    match &args[0] {
+        Object::Str(s) => Ok(Object::Str(s.to_lowercase())),
+        _ => Err("آرگومان تابع lowercase باید رشته باشد.".to_string()),
     }
 }

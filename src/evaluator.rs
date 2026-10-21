@@ -93,6 +93,28 @@ pub fn eval_statement(stmt: &Stmt, env: Rc<RefCell<Environment>>) -> Result<Obje
         }
         Stmt::Break(_) => Ok(Object::Break),
         Stmt::Continue(_) => Ok(Object::Continue),
+        Stmt::Import { path, token } => {
+            let code = std::fs::read_to_string(path)
+                .map_err(|e| format!("خطای وارد کردن ماژول '{}' در سطر {}: {}", path, token.line, e))?;
+            let lexer = crate::lexer::Lexer::new(&code);
+            let mut parser = crate::parser::Parser::new(lexer);
+            let program = parser.parse_program();
+            if !parser.errors.is_empty() {
+                return Err(format!("خطاهای نحوی در ماژول وارد شده '{}': {:?}", path, parser.errors));
+            }
+            eval_program(&program, env)?;
+            Ok(Object::Nil)
+        }
+        Stmt::TryCatch { try_block, err_var, catch_block, .. } => {
+            match eval_block_statement(try_block, env.clone()) {
+                Ok(val) => Ok(val),
+                Err(e) => {
+                    let catch_env = Rc::new(RefCell::new(Environment::new_enclosed(env)));
+                    catch_env.borrow_mut().set(err_var.clone(), Object::Str(e), false);
+                    eval_block_statement(catch_block, catch_env)
+                }
+            }
+        }
     }
 }
 
@@ -168,10 +190,68 @@ pub fn eval_expression(expr: &Expr, env: Rc<RefCell<Environment>>) -> Result<Obj
             }
             Ok(Object::Array(Rc::new(RefCell::new(list))))
         }
+        Expr::Map(pairs, _) => {
+            let mut map = std::collections::HashMap::new();
+            for (k_expr, v_expr) in pairs {
+                let k_obj = eval_expression(k_expr, env.clone())?;
+                let v_obj = eval_expression(v_expr, env.clone())?;
+                let k_str = match k_obj {
+                    Object::Str(s) => s,
+                    Object::Int(i) => i.to_string(),
+                    other => other.to_string(),
+                };
+                map.insert(k_str, v_obj);
+            }
+            Ok(Object::Map(Rc::new(RefCell::new(map))))
+        }
         Expr::Index(left_expr, index_expr, tok) => {
             let left = eval_expression(left_expr, env.clone())?;
             let idx = eval_expression(index_expr, env)?;
             eval_index_op(left, idx, tok)
+        }
+        Expr::Property(left_expr, prop_name, tok) => {
+            let left = eval_expression(left_expr, env)?;
+            match left {
+                Object::Map(m) => {
+                    let borrowed = m.borrow();
+                    match borrowed.get(prop_name) {
+                        Some(val) => Ok(val.clone()),
+                        None => Ok(Object::Nil),
+                    }
+                }
+                _ => Err(format!("دسترسی با نقطه فقط روی دیکشنری (Map) مجاز است در سطر {}", tok.line)),
+            }
+        }
+        Expr::IndexAssign(left_expr, idx_expr, val_expr, tok) => {
+            let left = eval_expression(left_expr, env.clone())?;
+            let idx = eval_expression(idx_expr, env.clone())?;
+            let val = eval_expression(val_expr, env)?;
+
+            match (left, idx) {
+                (Object::Array(arr), Object::Int(i)) => {
+                    let mut borrowed = arr.borrow_mut();
+                    let len = borrowed.len();
+                    let real_idx = if i < 0 {
+                        (len as i64 + i) as usize
+                    } else {
+                        i as usize
+                    };
+                    if real_idx >= len {
+                        return Err(format!("ایندکس {} خارج از محدوده آرایه با طول {} است در سطر {}", i, len, tok.line));
+                    }
+                    borrowed[real_idx] = val.clone();
+                    Ok(val)
+                }
+                (Object::Map(m), Object::Str(key)) => {
+                    m.borrow_mut().insert(key, val.clone());
+                    Ok(val)
+                }
+                (Object::Map(m), other) => {
+                    m.borrow_mut().insert(other.to_string(), val.clone());
+                    Ok(val)
+                }
+                (other, _) => Err(format!("عملیات تغییر ایندکس روی نوع '{}' مجاز نیست در سطر {}", other.type_name(), tok.line)),
+            }
         }
         Expr::Function { name, params, body, .. } => {
             let func_obj = Object::Function {
@@ -304,6 +384,21 @@ fn eval_index_op(left: Object, index: Object, tok: &crate::token::Token) -> Resu
                 return Err(format!("ایندکس رشته خارج از محدوده در سطر {}", tok.line));
             }
             Ok(Object::Str(chars[idx].to_string()))
+        }
+        (Object::Map(m), Object::Str(key)) => {
+            let borrowed = m.borrow();
+            match borrowed.get(key) {
+                Some(val) => Ok(val.clone()),
+                None => Ok(Object::Nil),
+            }
+        }
+        (Object::Map(m), other) => {
+            let key = other.to_string();
+            let borrowed = m.borrow();
+            match borrowed.get(&key) {
+                Some(val) => Ok(val.clone()),
+                None => Ok(Object::Nil),
+            }
         }
         _ => Err(format!("عملیات ایندکس روی نوع '{}' با ایندکس '{}' مجاز نیست.", left.type_name(), index.type_name())),
     }

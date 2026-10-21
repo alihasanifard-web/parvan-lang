@@ -1,0 +1,19 @@
+// Module helper for math utilities
+// ماژول محاسباتی پروان
+
+fn power(base, exp) {
+    let res = 1;
+    let i = 0;
+    while i < exp {
+        res = res * base;
+        i += 1;
+    }
+    return res;
+}
+
+fn factorial(n) {
+    if n <= 1 {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}

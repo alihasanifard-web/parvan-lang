@@ -11,6 +11,7 @@ pub enum Object {
     Str(String),
     Bool(bool),
     Array(Rc<RefCell<Vec<Object>>>),
+    Map(Rc<RefCell<HashMap<String, Object>>>),
     Function {
         params: Vec<String>,
         body: BlockStmt,
@@ -34,6 +35,7 @@ impl PartialEq for Object {
             (Object::Bool(a), Object::Bool(b)) => a == b,
             (Object::Nil, Object::Nil) => true,
             (Object::Array(a), Object::Array(b)) => *a.borrow() == *b.borrow(),
+            (Object::Map(a), Object::Map(b)) => *a.borrow() == *b.borrow(),
             _ => false,
         }
     }
@@ -64,6 +66,14 @@ impl fmt::Display for Object {
                 let items: Vec<String> = elements.borrow().iter().map(|e| e.to_string()).collect();
                 write!(f, "[{}]", items.join(", "))
             }
+            Object::Map(pairs) => {
+                let items: Vec<String> = pairs
+                    .borrow()
+                    .iter()
+                    .map(|(k, v)| format!("\"{}\": {}", k, v))
+                    .collect();
+                write!(f, "{{{}}}", items.join(", "))
+            }
         }
     }
 }
@@ -88,6 +98,7 @@ impl Object {
             Object::Str(_) => "String",
             Object::Bool(_) => "Boolean",
             Object::Array(_) => "Array",
+            Object::Map(_) => "Map",
             Object::Function { .. } => "Function",
             Object::Builtin(_) => "Builtin",
             Object::ReturnValue(_) => "ReturnValue",

@@ -35,8 +35,11 @@ pub enum Expr {
     Infix(Box<Expr>, InfixOp, Box<Expr>, Token),
     Call(Box<Expr>, Vec<Expr>, Token),
     Array(Vec<Expr>, Token),
+    Map(Vec<(Expr, Expr)>, Token),
     Index(Box<Expr>, Box<Expr>, Token),
+    Property(Box<Expr>, String, Token),
     Assign(String, Box<Expr>, Token),
+    IndexAssign(Box<Expr>, Box<Expr>, Box<Expr>, Token),
     Function {
         name: Option<String>,
         params: Vec<String>,
@@ -89,6 +92,16 @@ pub enum Stmt {
     Continue(Token),
     Print {
         args: Vec<Expr>,
+        token: Token,
+    },
+    Import {
+        path: String,
+        token: Token,
+    },
+    TryCatch {
+        try_block: BlockStmt,
+        err_var: String,
+        catch_block: BlockStmt,
         token: Token,
     },
 }
