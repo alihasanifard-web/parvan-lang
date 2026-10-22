@@ -11,6 +11,9 @@ description = "Parvan Programming Language (ParvanLang) - Modern, fast, and eleg
 readme = "README.md"
 license = "MIT"
 
+[build-dependencies]
+winres = "0.1"
+
 [dependencies]
 colored = "2.1.0"
 

@@ -3,6 +3,7 @@ use parvan::evaluator::eval_program;
 use parvan::lexer::Lexer;
 use parvan::object::{self, Environment};
 use parvan::parser::Parser;
+use parvan::persian::reshape_persian;
 use std::cell::RefCell;
 use std::env;
 use std::fs;
@@ -10,15 +11,7 @@ use std::io::{self, Write};
 use std::process;
 use std::rc::Rc;
 
-const VERSION: &str = "1.0.0 (Cyberpunk Edition)";
-const BANNER: &str = r#"
-  ██████╗  █████╗ ██████╗ ██╗   ██╗ █████╗ ███╗   ██╗
-  ██╔══██╗██╔══██╗██╔══██╗██║   ██║██╔══██╗████╗  ██║
-  ██████╔╝███████║██████╔╝██║   ██║███████║██╔██╗ ██║
-  ██╔═══╝ ██╔══██║██╔══██╗╚██╗ ██╔╝██╔══██║██║╚██╗██║
-  ██║     ██║  ██║██║  ██║ ╚████╔╝ ██║  ██║██║ ╚████║
-  ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═╝╚═╝  ╚═══╝
-"#;
+const VERSION: &str = "1.2.0";
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -42,21 +35,25 @@ fn main() {
 }
 
 fn print_help() {
-    println!("{}", BANNER.cyan().bold());
-    println!("{}", "زبان برنامه‌نویسی پروان (Parvan Programming Language)".green().bold());
-    println!("سازندگان: علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی\n");
-    println!("{}", "نحوه استفاده:".yellow().bold());
-    println!("  parvan                   ورود به محیط تعاملی و زنده (REPL)");
-    println!("  parvan <file.prv>        اجرای فایل کد پروان");
-    println!("  parvan --help            نمایش این راهنما");
-    println!("  parvan --version         نمایش نسخه مفسر");
+    println!();
+    println!("  {} {}", "⚡ ParvanLang".bright_cyan().bold(), format!("v{}", VERSION).bright_black());
+    println!("  {}", reshape_persian("زبان برنامه‌نویسی پروان").green());
+    println!("  {}", reshape_persian("تیم سازنده: علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی").bright_black());
+    println!();
+    println!("  {}", reshape_persian("نحوه استفاده:").yellow().bold());
+    println!("    parvan                  {}", reshape_persian("ورود به محیط تعاملی پروان (REPL)"));
+    println!("    parvan <file.prv>       {}", reshape_persian("اجرای فایل کد"));
+    println!("    parvan --version        {}", reshape_persian("نمایش نسخه"));
+    println!("    parvan --help           {}", reshape_persian("راهنمای دستورات"));
+    println!();
 }
 
 fn run_file(filename: &str) {
     let content = match fs::read_to_string(filename) {
         Ok(c) => c,
         Err(err) => {
-            eprintln!("{} خطای خواندن فایل '{}': {}", "❌".red(), filename, err);
+            let err_msg = format!("خطای خواندن فایل '{}': {}", filename, err);
+            eprintln!("  {} {}", "✖".red(), reshape_persian(&err_msg));
             process::exit(1);
         }
     };
@@ -66,52 +63,44 @@ fn run_file(filename: &str) {
     let program = parser.parse_program();
 
     if !parser.errors.is_empty() {
-        eprintln!("{}", "خطاهای نحو در برنامه:".red().bold());
+        eprintln!();
+        eprintln!("  {}", reshape_persian("خطاهای نحوی در برنامه:").red().bold());
         for err in parser.errors {
-            eprintln!("  {} {}", "•".red(), err);
+            eprintln!("  {} {}", "•".red(), reshape_persian(&err));
         }
+        eprintln!();
         process::exit(1);
     }
 
     let env = Rc::new(RefCell::new(Environment::new()));
     if let Err(err) = eval_program(&program, env) {
-        eprintln!("{} {}", "خطای اجرا:".red().bold(), err);
+        eprintln!("  {} {}", "✖".red(), reshape_persian(&err));
         process::exit(1);
     }
 }
 
 fn run_repl() {
-    println!("{}", BANNER.cyan().bold());
-    println!(
-        "{} {} - {}",
-        "⚡ ParvanLang".bright_cyan().bold(),
-        format!("v{}", VERSION).yellow(),
-        "محیط تعاملی فرمان پروان".white()
-    );
-    println!(
-        "توسعه‌یافته توسط: {} | {} | {}",
-        "علی حسنی‌فرد".bright_green(),
-        "احسان فضلی‌نژاد".bright_green(),
-        "امیرمهدی شهبازی".bright_green()
-    );
-    println!("برای خروج عبارت {} یا {} را بنویسید.\n", "exit".red(), "خروج".red());
+    println!();
+    println!("  {} {}", "⚡ ParvanLang".bright_cyan().bold(), format!("v{}", VERSION).bright_black());
+    println!("  {} {}", "•".bright_green(), reshape_persian("آماده اجرا - برای خروج خروج یا exit بنویسید").bright_black());
+    println!();
 
     let env = Rc::new(RefCell::new(Environment::new()));
 
     loop {
-        print!("{} ", "parvan>".bright_magenta().bold());
+        print!("  {} ", "›".bright_cyan().bold());
         io::stdout().flush().unwrap_or(());
 
         let mut line = String::new();
         match io::stdin().read_line(&mut line) {
-            Ok(0) => break, // EOF
+            Ok(0) => break,
             Ok(_) => {
                 let trimmed = line.trim();
                 if trimmed.is_empty() {
                     continue;
                 }
                 if trimmed == "exit" || trimmed == "خروج" || trimmed == "quit" {
-                    println!("{}", "خداحافظ! 🚀".green());
+                    println!("  {}", reshape_persian("خداحافظ!").bright_green());
                     break;
                 }
 
@@ -121,7 +110,7 @@ fn run_repl() {
 
                 if !parser.errors.is_empty() {
                     for err in parser.errors {
-                        println!("  {} {}", "•".red(), err);
+                        println!("  {} {}", "•".red(), reshape_persian(&err));
                     }
                     continue;
                 }
@@ -129,16 +118,18 @@ fn run_repl() {
                 match eval_program(&program, env.clone()) {
                     Ok(obj) => {
                         if obj != object::Object::Nil {
-                            println!("{} {}", "=>".bright_black(), obj.to_string().bright_yellow());
+                            let out_str = obj.to_string();
+                            let shaped = reshape_persian(&out_str);
+                            println!("  {} {}", "=".bright_black(), shaped.bright_yellow());
                         }
                     }
                     Err(err) => {
-                        println!("{} {}", "خطا:".red().bold(), err);
+                        println!("  {} {}", "✖".red(), reshape_persian(&err));
                     }
                 }
             }
             Err(err) => {
-                eprintln!("خطای ورودی: {}", err);
+                eprintln!("  {} {}", "✖".red(), err);
                 break;
             }
         }
