@@ -5,20 +5,22 @@ use crate::token::{Token, TokenKind};
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
     Lowest = 1,
-    Or = 2,         // ||
-    And = 3,        // &&
-    Equals = 4,     // ==, !=
-    LessGreater = 5,// >, <, >=, <=
-    Sum = 6,        // +, -
-    Product = 7,    // *, /, %
-    Prefix = 8,     // -X, !X
-    Call = 9,       // my_func(X)
-    Index = 10,     // array[index], obj.property
+    Pipe = 2,       // |>
+    Or = 3,         // ||
+    And = 4,        // &&
+    Equals = 5,     // ==, !=
+    LessGreater = 6,// >, <, >=, <=
+    Sum = 7,        // +, -
+    Product = 8,    // *, /, %
+    Prefix = 9,     // -X, !X
+    Call = 10,      // my_func(X)
+    Index = 11,     // array[index], obj.property
 }
 
 impl Precedence {
     fn from_token(token: &TokenKind) -> Precedence {
         match token {
+            TokenKind::Pipe => Precedence::Pipe,
             TokenKind::Or => Precedence::Or,
             TokenKind::And => Precedence::And,
             TokenKind::Eq | TokenKind::NotEq => Precedence::Equals,
@@ -121,8 +123,59 @@ impl Parser {
             TokenKind::Print => self.parse_print_statement(),
             TokenKind::Import => self.parse_import_statement(),
             TokenKind::Try => self.parse_try_catch_statement(),
+            TokenKind::Switch => self.parse_switch_statement(),
             _ => self.parse_expression_statement(),
         }
+    }
+
+    fn parse_switch_statement(&mut self) -> Option<Stmt> {
+        let tok = self.cur_token.clone();
+        self.next_token(); // on condition
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(TokenKind::LBrace) {
+            return None;
+        }
+
+        let mut cases = Vec::new();
+        let mut default_branch = None;
+
+        self.next_token(); // now on first token inside '{' (e.g. Case or Default or '}')
+
+        while !self.cur_token_is(&TokenKind::RBrace) && !self.cur_token_is(&TokenKind::Eof) {
+            if self.cur_token_is(&TokenKind::Case) {
+                self.next_token(); // on case value
+                let case_val = self.parse_expression(Precedence::Lowest)?;
+                if !self.expect_peek(TokenKind::Colon) {
+                    return None;
+                }
+                if !self.expect_peek(TokenKind::LBrace) {
+                    return None;
+                }
+                let body = self.parse_block_statement();
+                cases.push((case_val, body));
+                self.next_token(); // advance past '}' to next case/default
+            } else if self.cur_token_is(&TokenKind::Default) {
+                if !self.expect_peek(TokenKind::Colon) {
+                    return None;
+                }
+                if !self.expect_peek(TokenKind::LBrace) {
+                    return None;
+                }
+                let body = self.parse_block_statement();
+                default_branch = Some(body);
+                self.next_token(); // advance past '}'
+            } else {
+                self.next_token();
+            }
+        }
+
+        Some(Stmt::Switch {
+            condition,
+            cases,
+            default: default_branch,
+            token: tok,
+        })
     }
 
     fn parse_import_statement(&mut self) -> Option<Stmt> {
@@ -443,6 +496,21 @@ impl Parser {
                 | TokenKind::Or => {
                     self.next_token();
                     left = self.parse_infix(left)?;
+                }
+                TokenKind::Pipe => {
+                    self.next_token(); // on |>
+                    let pipe_tok = self.cur_token.clone();
+                    self.next_token(); // on target function/callable
+                    let right = self.parse_expression(Precedence::Call)?;
+                    match right {
+                        Expr::Call(func, mut args, tok) => {
+                            args.insert(0, left);
+                            left = Expr::Call(func, args, tok);
+                        }
+                        func_expr => {
+                            left = Expr::Call(Box::new(func_expr), vec![left], pipe_tok);
+                        }
+                    }
                 }
                 TokenKind::LParen => {
                     self.next_token();

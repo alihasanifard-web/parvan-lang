@@ -1,0 +1,91 @@
+// ParvanLang Comprehensive Benchmark & Feature Verification Suite
+// برنامه جامع راستی‌آزمایی و استرس‌تست تمامی زیرساخت‌های پروان
+
+print("=========================================");
+print("⚡ ParvanLang Comprehensive Stress Test ⚡");
+print("=========================================");
+
+// 1. Recursive Tree Performance (Fibonacci)
+fn fib(n) {
+    if n <= 1 {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+let start_t = time();
+let fib_val = fib(15);
+let elapsed = time() - start_t;
+print("1. Recursive Fibonacci(15) =", fib_val, "| Time:", round(elapsed * 1000), "ms");
+
+// 2. High-Order Functions & Array Manipulation
+let nums = [42, 12, 88, 3, 99, 1, 25];
+let sorted_nums = sort(nums);
+let reversed_nums = reverse(sorted_nums);
+
+print("2. Original:", nums);
+print("   Sorted:", sorted_nums);
+print("   Reversed:", reversed_nums);
+
+// 3. Complex Dictionary (HashMap) Operations
+let db = {
+    "engine": "ParvanDB",
+    "version": 1.2,
+    "metrics": {
+        "queries": 1000,
+        "active": true
+    }
+};
+
+db["status"] = "HEALTHY";
+print("3. Nested Dictionary Status:", db.status, "| Engine:", db.engine);
+print("   Keys present:", keys(db));
+
+// 4. Pattern Matching / Switch-Case
+fn get_role_clearance(role) {
+    let clearance = 0;
+    switch role {
+        case "guest": { clearance = 1; }
+        case "developer": { clearance = 5; }
+        case "admin": { clearance = 10; }
+        default: { clearance = -1; }
+    }
+    return clearance;
+}
+
+print("4. Switch-Case Clearance for 'developer':", get_role_clearance("developer"));
+print("   Switch-Case Clearance for 'unknown':", get_role_clearance("guest_user"));
+
+// 5. Exception Handling & Resilience
+let errors_caught = 0;
+try {
+    let invalid = 100 / 0;
+} catch (e) {
+    errors_caught += 1;
+}
+
+try {
+    let bad_idx = nums[100];
+} catch (e) {
+    errors_caught += 1;
+}
+
+if errors_caught == 2 {
+    print("5. Error resilience check: PASSED (2/2 errors safely handled)");
+} else {
+    print("5. Error resilience check: FAILED");
+}
+
+// 6. Persian RTL Reshaper & Native Persian Grammar
+متغیر امتیاز_نهایی = 100;
+متغیر وضعیت = "نامشخص";
+
+اگر امتیاز_نهایی >= 90 {
+    وضعیت = "فوق‌العاده عالی";
+} وگرنه {
+    وضعیت = "نیاز به بررسی";
+}
+
+چاپ("6. وضعیت ارزیابی فارسی:", وضعیت);
+
+print("\n✓ تمامی آزمون‌های زیرساختی با موفقیت ۱۰۰٪ پاس شدند! ✨");

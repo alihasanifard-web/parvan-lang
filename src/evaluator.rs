@@ -117,6 +117,28 @@ pub fn eval_statement(stmt: &Stmt, env: Rc<RefCell<Environment>>) -> Result<Obje
                 }
             }
         }
+        Stmt::Switch { condition, cases, default, .. } => {
+            let target_val = eval_expression(condition, env.clone())?;
+            let mut matched = false;
+            let mut result = Object::Nil;
+
+            for (case_expr, body) in cases {
+                let case_val = eval_expression(case_expr, env.clone())?;
+                if case_val == target_val {
+                    matched = true;
+                    result = eval_block_statement(body, env.clone())?;
+                    break;
+                }
+            }
+
+            if !matched {
+                if let Some(def_block) = default {
+                    result = eval_block_statement(def_block, env)?;
+                }
+            }
+
+            Ok(result)
+        }
     }
 }
 
@@ -344,6 +366,16 @@ fn eval_infix_op(left: Object, op: &InfixOp, right: Object, tok: &crate::token::
             InfixOp::Equal => Ok(Object::Bool(a == b)),
             InfixOp::NotEqual => Ok(Object::Bool(a != b)),
             _ => Err(format!("عملگر نامعتبر روی رشته‌ها در سطر {}", tok.line)),
+        },
+        (Object::Bool(_a), Object::Str(_b)) => match op {
+            InfixOp::Equal => Ok(Object::Bool(false)),
+            InfixOp::NotEqual => Ok(Object::Bool(true)),
+            _ => Err(format!("عملگر نامعتبر در سطر {}", tok.line)),
+        },
+        (Object::Str(_a), Object::Bool(_b)) => match op {
+            InfixOp::Equal => Ok(Object::Bool(false)),
+            InfixOp::NotEqual => Ok(Object::Bool(true)),
+            _ => Err(format!("عملگر نامعتبر در سطر {}", tok.line)),
         },
         (a, b) => match op {
             InfixOp::Equal => Ok(Object::Bool(a == b)),

@@ -27,6 +27,15 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "uppercase" | "بزرگ" => Some(Object::Builtin(builtin_uppercase)),
         "lowercase" | "کوچک" => Some(Object::Builtin(builtin_lowercase)),
         "reshape" | "جورچین" | "راست_به_چپ" => Some(Object::Builtin(builtin_reshape)),
+        "reverse" | "معکوس" => Some(Object::Builtin(builtin_reverse)),
+        "sort" | "مرتب_سازی" => Some(Object::Builtin(builtin_sort)),
+        "replace" | "جایگزینی" => Some(Object::Builtin(builtin_replace)),
+        "starts_with" | "شروع_با" => Some(Object::Builtin(builtin_starts_with)),
+        "ends_with" | "پایان_با" => Some(Object::Builtin(builtin_ends_with)),
+        "floor" | "کف" => Some(Object::Builtin(builtin_floor)),
+        "ceil" | "سقف" => Some(Object::Builtin(builtin_ceil)),
+        "round" | "گرد" => Some(Object::Builtin(builtin_round)),
+        "exit" | "خروج" => Some(Object::Builtin(builtin_exit)),
         _ => None,
     }
 }
@@ -369,4 +378,117 @@ fn builtin_reshape(args: Vec<Object>) -> Result<Object, String> {
     };
     let reshaped = crate::persian::reshape_persian(&text);
     Ok(Object::Str(reshaped))
+}
+
+fn builtin_reverse(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع reverse یک آرگومان (آرایه یا رشته) می‌پذیرد.".to_string());
+    }
+    match &args[0] {
+        Object::Str(s) => {
+            let rev: String = s.chars().rev().collect();
+            Ok(Object::Str(rev))
+        }
+        Object::Array(arr) => {
+            let mut list = arr.borrow().clone();
+            list.reverse();
+            Ok(Object::Array(Rc::new(RefCell::new(list))))
+        }
+        _ => Err("تابع reverse فقط روی رشته و آرایه کار می‌کند.".to_string()),
+    }
+}
+
+fn builtin_sort(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع sort یک آرگومان (آرایه) می‌پذیرد.".to_string());
+    }
+    match &args[0] {
+        Object::Array(arr) => {
+            let mut list = arr.borrow().clone();
+            list.sort_by(|a, b| {
+                match (a, b) {
+                    (Object::Int(x), Object::Int(y)) => x.cmp(y),
+                    (Object::Float(x), Object::Float(y)) => x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal),
+                    (Object::Str(x), Object::Str(y)) => x.cmp(y),
+                    _ => std::cmp::Ordering::Equal,
+                }
+            });
+            Ok(Object::Array(Rc::new(RefCell::new(list))))
+        }
+        _ => Err("تابع sort فقط روی آرایه کار می‌کند.".to_string()),
+    }
+}
+
+fn builtin_replace(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 3 {
+        return Err("تابع replace سه آرگومان می‌پذیرد: (متن_اصلی, متن_قدیم, متن_جدید).".to_string());
+    }
+    match (&args[0], &args[1], &args[2]) {
+        (Object::Str(src), Object::Str(from), Object::Str(to)) => {
+            Ok(Object::Str(src.replace(from, to)))
+        }
+        _ => Err("آرگومان‌های replace باید هر سه از نوع رشته باشند.".to_string()),
+    }
+}
+
+fn builtin_starts_with(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 2 {
+        return Err("تابع starts_with دو آرگومان می‌پذیرد: (متن, پیشوند).".to_string());
+    }
+    match (&args[0], &args[1]) {
+        (Object::Str(s), Object::Str(prefix)) => Ok(Object::Bool(s.starts_with(prefix))),
+        _ => Err("آرگومان‌های starts_with باید رشته باشند.".to_string()),
+    }
+}
+
+fn builtin_ends_with(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 2 {
+        return Err("تابع ends_with دو آرگومان می‌پذیرد: (متن, پسوند).".to_string());
+    }
+    match (&args[0], &args[1]) {
+        (Object::Str(s), Object::Str(suffix)) => Ok(Object::Bool(s.ends_with(suffix))),
+        _ => Err("آرگومان‌های ends_with باید رشته باشند.".to_string()),
+    }
+}
+
+fn builtin_floor(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع floor یک آرگومان عددی می‌پذیرد.".to_string());
+    }
+    match &args[0] {
+        Object::Int(i) => Ok(Object::Int(*i)),
+        Object::Float(f) => Ok(Object::Int(f.floor() as i64)),
+        _ => Err("تابع floor فقط روی اعداد کار می‌کند.".to_string()),
+    }
+}
+
+fn builtin_ceil(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع ceil یک آرگومان عددی می‌پذیرد.".to_string());
+    }
+    match &args[0] {
+        Object::Int(i) => Ok(Object::Int(*i)),
+        Object::Float(f) => Ok(Object::Int(f.ceil() as i64)),
+        _ => Err("تابع ceil فقط روی اعداد کار می‌کند.".to_string()),
+    }
+}
+
+fn builtin_round(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع round یک آرگومان عددی می‌پذیرد.".to_string());
+    }
+    match &args[0] {
+        Object::Int(i) => Ok(Object::Int(*i)),
+        Object::Float(f) => Ok(Object::Int(f.round() as i64)),
+        _ => Err("تابع round فقط روی اعداد کار می‌کند.".to_string()),
+    }
+}
+
+fn builtin_exit(args: Vec<Object>) -> Result<Object, String> {
+    let code = if let Some(Object::Int(c)) = args.first() {
+        *c as i32
+    } else {
+        0
+    };
+    std::process::exit(code);
 }

@@ -167,6 +167,10 @@ impl Lexer {
                     self.read_char();
                     self.read_char();
                     Token::new(TokenKind::Or, "||".to_string(), line, col)
+                } else if self.peek_char() == Some('>') {
+                    self.read_char();
+                    self.read_char();
+                    Token::new(TokenKind::Pipe, "|>".to_string(), line, col)
                 } else {
                     let ch = self.ch.unwrap();
                     self.read_char();
@@ -257,6 +261,9 @@ impl Lexer {
             "import" => TokenKind::Import,
             "try" => TokenKind::Try,
             "catch" => TokenKind::Catch,
+            "switch" => TokenKind::Switch,
+            "case" => TokenKind::Case,
+            "default" => TokenKind::Default,
             "true" => TokenKind::Bool(true),
             "false" => TokenKind::Bool(false),
             "nil" | "null" => TokenKind::Nil,
@@ -277,6 +284,9 @@ impl Lexer {
             "وارد_کن" | "پیوست" => TokenKind::Import,
             "تلاش" => TokenKind::Try,
             "خطا" | "گرفتن_خطا" => TokenKind::Catch,
+            "انتخاب" => TokenKind::Switch,
+            "حالت" => TokenKind::Case,
+            "پیش‌فرض" | "پیش_فرض" => TokenKind::Default,
             "درست" => TokenKind::Bool(true),
             "غلط" => TokenKind::Bool(false),
             "هیچ" => TokenKind::Nil,

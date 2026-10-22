@@ -95,6 +95,45 @@ mod tests {
     }
 
     #[test]
+    fn test_switch_case_logic() {
+        let res = test_eval(r#"
+            let role = "admin";
+            let access = 0;
+            switch role {
+                case "user": { access = 1; }
+                case "admin": { access = 99; }
+                default: { access = -1; }
+            }
+            access;
+        "#).unwrap();
+        assert_eq!(res, Object::Int(99));
+    }
+
+    #[test]
+    fn test_advanced_stdlib_builtins() {
+        let res = test_eval(r#"
+            let list = [5, 2, 8, 1, 9];
+            let sorted = sort(list);
+            let rev = reverse(sorted);
+            let s = "Hello World";
+            let rep = replace(s, "World", "Parvan");
+            rep;
+        "#).unwrap();
+        assert_eq!(res, Object::Str("Hello Parvan".to_string()));
+    }
+
+    #[test]
+    fn test_pipe_operator() {
+        let res = test_eval(r#"
+            fn square(n) { return n * n; }
+            fn inc(n) { return n + 1; }
+            let x = 4 |> square |> inc;
+            x;
+        "#).unwrap();
+        assert_eq!(res, Object::Int(17));
+    }
+
+    #[test]
     fn test_try_catch_resilience() {
         let res = test_eval(r#"
             let caught = false;

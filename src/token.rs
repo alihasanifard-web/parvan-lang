@@ -22,6 +22,7 @@ pub enum TokenKind {
     Assign,     // =
     PlusAssign, // +=
     MinusAssign,// -=
+    Pipe,       // |> (Pipeline Operator)
 
     // Comparisons
     Eq,     // ==
@@ -62,6 +63,9 @@ pub enum TokenKind {
     Import,     // import / وارد_کن
     Try,        // try / تلاش
     Catch,      // catch / خطا
+    Switch,     // switch / انتخاب
+    Case,       // case / حالت
+    Default,    // default / پیش‌فرض
 }
 
 #[derive(Debug, Clone, PartialEq)]

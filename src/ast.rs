@@ -104,6 +104,12 @@ pub enum Stmt {
         catch_block: BlockStmt,
         token: Token,
     },
+    Switch {
+        condition: Expr,
+        cases: Vec<(Expr, BlockStmt)>,
+        default: Option<BlockStmt>,
+        token: Token,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
