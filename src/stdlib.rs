@@ -38,6 +38,8 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "exit" | "خروج" => Some(Object::Builtin(builtin_exit)),
         "http_get" | "دریافت_وب" => Some(Object::Builtin(builtin_http_get)),
         "http_post" | "ارسال_وب" => Some(Object::Builtin(builtin_http_post)),
+        "alert" | "پیام_سیستم" => Some(Object::Builtin(builtin_alert)),
+        "msgbox" | "جعبه_پیام" => Some(Object::Builtin(builtin_msgbox)),
         _ => None,
     }
 }
@@ -582,4 +584,82 @@ fn builtin_http_post(args: Vec<Object>) -> Result<Object, String> {
     };
 
     Ok(Object::Str(resp_body.to_string()))
+}
+
+fn builtin_alert(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع alert نیازمند حداقل ۱ پیام است.".to_string());
+    }
+    let msg = args[0].to_string();
+    let title = if args.len() > 1 {
+        args[1].to_string()
+    } else {
+        "Parvan System".to_string()
+    };
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::ffi::OsStr;
+        use std::iter::once;
+        use std::os::windows::ffi::OsStrExt;
+
+        let wide_msg: Vec<u16> = OsStr::new(&msg).encode_wide().chain(once(0)).collect();
+        let wide_title: Vec<u16> = OsStr::new(&title).encode_wide().chain(once(0)).collect();
+
+        #[link(name = "user32")]
+        unsafe extern "system" {
+            fn MessageBoxW(
+                hWnd: *mut std::ffi::c_void,
+                lpText: *const u16,
+                lpCaption: *const u16,
+                uType: u32,
+            ) -> i32;
+        }
+
+        unsafe {
+            MessageBoxW(std::ptr::null_mut(), wide_msg.as_ptr(), wide_title.as_ptr(), 0x00000040); // MB_ICONINFORMATION
+        }
+    }
+
+    Ok(Object::Bool(true))
+}
+
+fn builtin_msgbox(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع msgbox نیازمند ۲ آرگومان است: (عنوان, متن)".to_string());
+    }
+    let title = args[0].to_string();
+    let msg = args[1].to_string();
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::ffi::OsStr;
+        use std::iter::once;
+        use std::os::windows::ffi::OsStrExt;
+
+        let wide_msg: Vec<u16> = OsStr::new(&msg).encode_wide().chain(once(0)).collect();
+        let wide_title: Vec<u16> = OsStr::new(&title).encode_wide().chain(once(0)).collect();
+
+        #[link(name = "user32")]
+        unsafe extern "system" {
+            fn MessageBoxW(
+                hWnd: *mut std::ffi::c_void,
+                lpText: *const u16,
+                lpCaption: *const u16,
+                uType: u32,
+            ) -> i32;
+        }
+
+        let ret = unsafe {
+            MessageBoxW(std::ptr::null_mut(), wide_msg.as_ptr(), wide_title.as_ptr(), 0x00000001 | 0x00000020) // MB_OKCANCEL | MB_ICONQUESTION
+        };
+        // 1 = IDOK, 2 = IDCANCEL
+        Ok(Object::Bool(ret == 1))
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        println!("[{}] {}", title, msg);
+        Ok(Object::Bool(true))
+    }
 }

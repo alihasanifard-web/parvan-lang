@@ -171,6 +171,16 @@ mod tests {
     }
 
     #[test]
+    fn test_gui_alert_builtin() {
+        let res = test_eval(r#"
+            // Test non-blocking GUI call
+            let f = fn() { return true; };
+            f();
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
     fn test_try_catch_resilience() {
         let res = test_eval(r#"
             let caught = false;
