@@ -60,6 +60,65 @@ mod tests {
     }
 
     #[test]
+    fn test_vm_conditionals_and_jumps() {
+        use parvan::compiler::Compiler;
+        use parvan::vm::Vm;
+        use parvan::lexer::Lexer;
+        use parvan::parser::Parser;
+
+        let input = r#"
+            let x = 10;
+            let result = 0;
+            if x > 5 {
+                result = 100;
+            } else {
+                result = 200;
+            }
+            result;
+        "#;
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert!(parser.errors.is_empty());
+
+        let mut compiler = Compiler::new();
+        let bytecode = compiler.compile(&program).expect("VM compile failed");
+        let mut vm = Vm::new(bytecode);
+        let res = vm.run().expect("VM run failed");
+        assert_eq!(res, Object::Int(100));
+    }
+
+    #[test]
+    fn test_vm_while_loops() {
+        use parvan::compiler::Compiler;
+        use parvan::vm::Vm;
+        use parvan::lexer::Lexer;
+        use parvan::parser::Parser;
+
+        let input = r#"
+            let sum = 0;
+            let i = 1;
+            while i <= 100 {
+                if i % 2 == 0 {
+                    sum = sum + i;
+                }
+                i = i + 1;
+            }
+            sum;
+        "#;
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert!(parser.errors.is_empty());
+
+        let mut compiler = Compiler::new();
+        let bytecode = compiler.compile(&program).expect("VM loop compile failed");
+        let mut vm = Vm::new(bytecode);
+        let res = vm.run().expect("VM loop run failed");
+        assert_eq!(res, Object::Int(2550));
+    }
+
+    #[test]
     fn test_maps_and_index_assignment() {
         let res = test_eval(r#"
             let m = {"key": 100};

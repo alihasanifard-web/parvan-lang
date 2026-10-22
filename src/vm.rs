@@ -58,8 +58,35 @@ impl Vm {
                     (Object::Float(x), Object::Float(y)) => Ok(Object::Float(x / y)),
                     _ => Err("Unsupported types for Div".to_string()),
                 })?,
+                x if x == Opcode::OpMod as u8 => self.execute_binary_op(|a, b| match (a, b) {
+                    (Object::Int(x), Object::Int(y)) => {
+                        if y == 0 { return Err("Modulo by zero in VM".to_string()); }
+                        Ok(Object::Int(x % y))
+                    }
+                    _ => Err("Unsupported types for Modulo".to_string()),
+                })?,
                 x if x == Opcode::OpEqual as u8 => self.execute_binary_op(|a, b| Ok(Object::Bool(a == b)))?,
                 x if x == Opcode::OpNotEqual as u8 => self.execute_binary_op(|a, b| Ok(Object::Bool(a != b)))?,
+                x if x == Opcode::OpGreaterThan as u8 => self.execute_binary_op(|a, b| match (a, b) {
+                    (Object::Int(x), Object::Int(y)) => Ok(Object::Bool(x > y)),
+                    (Object::Float(x), Object::Float(y)) => Ok(Object::Bool(x > y)),
+                    _ => Err("Invalid types for > comparison".to_string()),
+                })?,
+                x if x == Opcode::OpGreaterEqual as u8 => self.execute_binary_op(|a, b| match (a, b) {
+                    (Object::Int(x), Object::Int(y)) => Ok(Object::Bool(x >= y)),
+                    (Object::Float(x), Object::Float(y)) => Ok(Object::Bool(x >= y)),
+                    _ => Err("Invalid types for >= comparison".to_string()),
+                })?,
+                x if x == Opcode::OpLessThan as u8 => self.execute_binary_op(|a, b| match (a, b) {
+                    (Object::Int(x), Object::Int(y)) => Ok(Object::Bool(x < y)),
+                    (Object::Float(x), Object::Float(y)) => Ok(Object::Bool(x < y)),
+                    _ => Err("Invalid types for < comparison".to_string()),
+                })?,
+                x if x == Opcode::OpLessEqual as u8 => self.execute_binary_op(|a, b| match (a, b) {
+                    (Object::Int(x), Object::Int(y)) => Ok(Object::Bool(x <= y)),
+                    (Object::Float(x), Object::Float(y)) => Ok(Object::Bool(x <= y)),
+                    _ => Err("Invalid types for <= comparison".to_string()),
+                })?,
                 x if x == Opcode::OpTrue as u8 => self.push(Object::Bool(true))?,
                 x if x == Opcode::OpFalse as u8 => self.push(Object::Bool(false))?,
                 x if x == Opcode::OpNil as u8 => self.push(Object::Nil)?,
@@ -72,6 +99,17 @@ impl Vm {
                     let global_idx = self.read_u16() as usize;
                     let val = self.globals[global_idx].clone();
                     self.push(val)?;
+                }
+                x if x == Opcode::OpJump as u8 => {
+                    let target = self.read_u16() as usize;
+                    self.ip = target;
+                }
+                x if x == Opcode::OpJumpIfFalse as u8 => {
+                    let target = self.read_u16() as usize;
+                    let cond = self.pop()?;
+                    if !cond.is_truthy() {
+                        self.ip = target;
+                    }
                 }
                 x if x == Opcode::OpReturn as u8 => {
                     return Ok(self.pop().unwrap_or(Object::Nil));

@@ -1,0 +1,14 @@
+// ParvanLang VM High-Speed Loop & Conditional Verification
+// آزمون اجرای پرسرعت حلقه‌ها و شرط‌ها روی ماشین مجازی بایت‌کد
+
+let sum = 0;
+let i = 1;
+
+while i <= 100 {
+    if i % 2 == 0 {
+        sum = sum + i;
+    }
+    i = i + 1;
+}
+
+sum;

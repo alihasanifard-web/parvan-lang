@@ -52,6 +52,63 @@ impl Compiler {
                 self.emit(Opcode::OpReturn);
                 Ok(())
             }
+            Stmt::If { condition, consequence, alternative, .. } => {
+                self.compile_expression(condition)?;
+
+                // Emit jump-if-false with placeholder address
+                let jump_if_false_pos = self.emit(Opcode::OpJumpIfFalse);
+                self.emit_u16(9999);
+
+                // Compile consequence
+                for s in &consequence.statements {
+                    self.compile_statement(s)?;
+                }
+
+                // Emit jump over alternative
+                let jump_pos = self.emit(Opcode::OpJump);
+                self.emit_u16(9999);
+
+                // Patch jump_if_false target
+                let alt_start = self.instructions.len() as u16;
+                self.patch_u16(jump_if_false_pos + 1, alt_start);
+
+                if let Some(alt) = alternative {
+                    for s in &alt.statements {
+                        self.compile_statement(s)?;
+                    }
+                }
+
+                // Patch jump target
+                let after_alt = self.instructions.len() as u16;
+                self.patch_u16(jump_pos + 1, after_alt);
+
+                Ok(())
+            }
+            Stmt::While { condition, body, .. } => {
+                let loop_start = self.instructions.len() as u16;
+
+                // Evaluate condition
+                self.compile_expression(condition)?;
+
+                // If condition is false, jump out of loop
+                let jump_out_pos = self.emit(Opcode::OpJumpIfFalse);
+                self.emit_u16(9999);
+
+                // Compile loop body
+                for s in &body.statements {
+                    self.compile_statement(s)?;
+                }
+
+                // Loop back to condition
+                self.emit(Opcode::OpJump);
+                self.emit_u16(loop_start);
+
+                // Patch exit jump address
+                let loop_end = self.instructions.len() as u16;
+                self.patch_u16(jump_out_pos + 1, loop_end);
+
+                Ok(())
+            }
             _ => Err("Statement not yet supported in Bytecode compiler".to_string()),
         }
     }
@@ -118,6 +175,17 @@ impl Compiler {
                 };
                 Ok(())
             }
+            Expr::Assign(name, val_expr, _tok) => {
+                self.compile_expression(val_expr)?;
+                let next_idx = self.symbol_table.len() as u16;
+                let symbol_idx = *self.symbol_table.entry(name.clone()).or_insert(next_idx);
+                self.emit(Opcode::OpSetGlobal);
+                self.emit_u16(symbol_idx);
+                // Also get global back on stack so expression returns value
+                self.emit(Opcode::OpGetGlobal);
+                self.emit_u16(symbol_idx);
+                Ok(())
+            }
             Expr::Prefix(op, right, _) => {
                 self.compile_expression(right)?;
                 match op {
@@ -144,5 +212,10 @@ impl Compiler {
     fn emit_u16(&mut self, val: u16) {
         self.instructions.push((val >> 8) as u8);
         self.instructions.push((val & 0xFF) as u8);
+    }
+
+    fn patch_u16(&mut self, pos: usize, val: u16) {
+        self.instructions[pos] = (val >> 8) as u8;
+        self.instructions[pos + 1] = (val & 0xFF) as u8;
     }
 }
