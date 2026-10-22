@@ -159,6 +159,18 @@ mod tests {
     }
 
     #[test]
+    fn test_http_get_builtin_offline() {
+        let res = test_eval(r#"
+            try {
+                http_get("http://127.0.0.1:9999/test");
+            } catch (err) {
+                "connection_failed";
+            }
+        "#).unwrap();
+        assert_eq!(res, Object::Str("connection_failed".to_string()));
+    }
+
+    #[test]
     fn test_try_catch_resilience() {
         let res = test_eval(r#"
             let caught = false;

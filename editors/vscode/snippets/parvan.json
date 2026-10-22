@@ -1,0 +1,45 @@
+{
+  "Function Definition": {
+    "prefix": "fn",
+    "body": [
+      "fn ${1:name}(${2:params}) {",
+      "\t${0:// body}",
+      "}"
+    ],
+    "description": "Define a Parvan function"
+  },
+  "Persian Function": {
+    "prefix": "تابع",
+    "body": [
+      "تابع ${1:نام}(${2:ورودی‌ها}) {",
+      "\t${0:// بدنه تابع}",
+      "}"
+    ],
+    "description": "تعریف تابع به زبان فارسی"
+  },
+  "If Statement": {
+    "prefix": "if",
+    "body": [
+      "if ${1:condition} {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "If statement"
+  },
+  "Persian If": {
+    "prefix": "اگر",
+    "body": [
+      "اگر ${1:شرط} {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "دستور شرطی اگر فارسی"
+  },
+  "Pipeline Example": {
+    "prefix": "pipe",
+    "body": [
+      "let ${1:result} = ${2:value} |> ${3:func1} |> ${4:func2};"
+    ],
+    "description": "Parvan pipeline operator"
+  }
+}

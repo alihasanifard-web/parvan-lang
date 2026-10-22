@@ -36,6 +36,8 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "ceil" | "سقف" => Some(Object::Builtin(builtin_ceil)),
         "round" | "گرد" => Some(Object::Builtin(builtin_round)),
         "exit" | "خروج" => Some(Object::Builtin(builtin_exit)),
+        "http_get" | "دریافت_وب" => Some(Object::Builtin(builtin_http_get)),
+        "http_post" | "ارسال_وب" => Some(Object::Builtin(builtin_http_post)),
         _ => None,
     }
 }
@@ -491,4 +493,93 @@ fn builtin_exit(args: Vec<Object>) -> Result<Object, String> {
         0
     };
     std::process::exit(code);
+}
+
+fn builtin_http_get(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع http_get نیازمند ۱ آرگومان (آدرس URL) است.".to_string());
+    }
+    let url = match &args[0] {
+        Object::Str(u) => u.clone(),
+        _ => return Err("آدرس URL باید رشته باشد.".to_string()),
+    };
+
+    use std::io::Read;
+    use std::net::TcpStream;
+
+    let parsed = url.strip_prefix("http://").ok_or_else(|| "فقط پروتکل http:// پشتیبانی می‌شود.".to_string())?;
+    let mut parts = parsed.splitn(2, '/');
+    let host_port = parts.next().unwrap_or("");
+    let path = format!("/{}", parts.next().unwrap_or(""));
+
+    let host = if host_port.contains(':') {
+        host_port.to_string()
+    } else {
+        format!("{}:80", host_port)
+    };
+
+    let mut stream = TcpStream::connect(&host).map_err(|e| format!("خطای اتصال به سرور '{}': {}", host, e))?;
+    let request = format!(
+        "GET {} HTTP/1.1\r\nHost: {}\r\nUser-Agent: ParvanLang/2.0\r\nConnection: close\r\n\r\n",
+        path, host_port
+    );
+
+    use std::io::Write;
+    stream.write_all(request.as_bytes()).map_err(|e| e.to_string())?;
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).map_err(|e| e.to_string())?;
+
+    // Split headers and body
+    let body = if let Some(pos) = response.find("\r\n\r\n") {
+        &response[pos + 4..]
+    } else {
+        &response
+    };
+
+    Ok(Object::Str(body.to_string()))
+}
+
+fn builtin_http_post(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع http_post حداقل ۲ آرگومان می‌پذیرد: (url, body).".to_string());
+    }
+    let url = match &args[0] {
+        Object::Str(u) => u.clone(),
+        _ => return Err("آدرس URL باید رشته باشد.".to_string()),
+    };
+    let body_str = args[1].to_string();
+
+    use std::io::{Read, Write};
+    use std::net::TcpStream;
+
+    let parsed = url.strip_prefix("http://").ok_or_else(|| "فقط پروتکل http:// پشتیبانی می‌شود.".to_string())?;
+    let mut parts = parsed.splitn(2, '/');
+    let host_port = parts.next().unwrap_or("");
+    let path = format!("/{}", parts.next().unwrap_or(""));
+
+    let host = if host_port.contains(':') {
+        host_port.to_string()
+    } else {
+        format!("{}:80", host_port)
+    };
+
+    let mut stream = TcpStream::connect(&host).map_err(|e| format!("خطای اتصال به سرور '{}': {}", host, e))?;
+    let request = format!(
+        "POST {} HTTP/1.1\r\nHost: {}\r\nUser-Agent: ParvanLang/2.0\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        path, host_port, body_str.len(), body_str
+    );
+
+    stream.write_all(request.as_bytes()).map_err(|e| e.to_string())?;
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).map_err(|e| e.to_string())?;
+
+    let resp_body = if let Some(pos) = response.find("\r\n\r\n") {
+        &response[pos + 4..]
+    } else {
+        &response
+    };
+
+    Ok(Object::Str(resp_body.to_string()))
 }

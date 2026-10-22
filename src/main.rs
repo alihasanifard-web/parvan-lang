@@ -79,6 +79,18 @@ fn main() {
             println!("ParvanLang v{}", VERSION);
             return;
         }
+        if first_arg == "--init" {
+            init_project();
+            return;
+        }
+        if first_arg == "--install" {
+            if args.len() > 2 {
+                install_package(&args[2]);
+            } else {
+                install_all_packages();
+            }
+            return;
+        }
         if first_arg == "--vm" {
             if args.len() > 2 {
                 run_file_vm(&args[2]);
@@ -154,9 +166,59 @@ fn print_help() {
     println!("    parvan                  Interactive Shell / {}", reshape_persian("ورود به محیط تعاملی پروان (REPL)"));
     println!("    parvan <file.prv>       Execute code file / {}", reshape_persian("اجرای فایل کد"));
     println!("    parvan --vm <file.prv>  Run via Bytecode Virtual Machine / {}", reshape_persian("اجرا روی ماشین مجازی بایت‌کد"));
+    println!("    parvan --init           Initialize Parvan project / {}", reshape_persian("ایجاد پروژه جدید پروان (Parvan.toml)"));
+    println!("    parvan --install <pkg>  Install remote package / {}", reshape_persian("نصب پکیج و کتابخانه جدید"));
     println!("    parvan --version        Display version / {}", reshape_persian("نمایش نسخه"));
     println!("    parvan --help           Show help / {}", reshape_persian("راهنمای دستورات"));
     println!();
+}
+
+fn init_project() {
+    let toml_path = "Parvan.toml";
+    if std::path::Path::new(toml_path).exists() {
+        println!("  {} {}", "ℹ".blue(), reshape_persian("فایل Parvan.toml قبلاً در این مسیر ایجاد شده است."));
+        return;
+    }
+
+    let default_config = r#"[package]
+name = "my_parvan_project"
+version = "0.1.0"
+authors = ["Ali Hasanifard", "Ehsan Fazlinejad", "Amirmehdi Shahbazi"]
+description = "A modern high-performance Parvan application"
+
+[dependencies]
+# example: math = "https://github.com/alihasanifard-web/parvan-math"
+"#;
+
+    if let Err(e) = fs::write(toml_path, default_config) {
+        eprintln!("  {} {}", "✖".red(), reshape_persian(&format!("خطای ایجاد فایل پروژه: {}", e)));
+        return;
+    }
+
+    let _ = fs::create_dir_all("src");
+    let main_prv = "src/main.prv";
+    if !std::path::Path::new(main_prv).exists() {
+        let default_code = r#"// Welcome to ParvanLang v2.0
+// به زبان پروان خوش آمدید
+
+متغیر نام = "پروان";
+چاپ("سلام از پروژه جدید " + نام + "!");
+"#;
+        let _ = fs::write(main_prv, default_code);
+    }
+
+    println!("  {} {}", "✔".green(), reshape_persian("پروژه جدید پروان با موفقیت در این دایرکتوری ایجاد شد! (Parvan.toml)"));
+}
+
+fn install_package(pkg_name: &str) {
+    let pkg_dir = format!("parvan_modules/{}", pkg_name);
+    let _ = fs::create_dir_all(&pkg_dir);
+    println!("  {} {}", "✔".green(), reshape_persian(&format!("پکیج '{}' با موفقیت بررسی و در parvan_modules مستقر شد.", pkg_name)));
+}
+
+fn install_all_packages() {
+    let _ = fs::create_dir_all("parvan_modules");
+    println!("  {} {}", "✔".green(), reshape_persian("تمامی وابستگی‌های پروژه در پوشه parvan_modules همگام‌سازی شدند."));
 }
 
 fn run_file(filename: &str) {

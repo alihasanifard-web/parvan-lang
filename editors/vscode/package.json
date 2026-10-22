@@ -1,0 +1,38 @@
+{
+  "name": "parvan-lang",
+  "displayName": "Parvan Programming Language",
+  "description": "Official syntax highlighting, Persian RTL support, and snippets for Parvan (.prv)",
+  "version": "1.0.0",
+  "publisher": "parvan-team",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "icon": "parvan.ico",
+  "contributes": {
+    "languages": [
+      {
+        "id": "parvan",
+        "aliases": ["Parvan", "parvan", "prv"],
+        "extensions": [".prv", ".parvan"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "parvan",
+        "scopeName": "source.parvan",
+        "path": "./syntaxes/parvan.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "parvan",
+        "path": "./snippets/parvan.json"
+      }
+    ]
+  }
+}
