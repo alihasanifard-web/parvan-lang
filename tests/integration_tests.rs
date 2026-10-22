@@ -134,6 +134,31 @@ mod tests {
     }
 
     #[test]
+    fn test_bytecode_compiler_and_vm_execution() {
+        use parvan::compiler::Compiler;
+        use parvan::vm::Vm;
+        use parvan::lexer::Lexer;
+        use parvan::parser::Parser;
+
+        let input = r#"
+            let a = 15;
+            let b = 25;
+            let c = (a + b) * 2;
+            c;
+        "#;
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert!(parser.errors.is_empty());
+
+        let mut compiler = Compiler::new();
+        let bytecode = compiler.compile(&program).expect("Compilation to bytecode failed");
+        let mut vm = Vm::new(bytecode);
+        let result = vm.run().expect("VM execution failed");
+        assert_eq!(result, Object::Int(80));
+    }
+
+    #[test]
     fn test_try_catch_resilience() {
         let res = test_eval(r#"
             let caught = false;

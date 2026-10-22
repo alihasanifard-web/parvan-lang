@@ -11,7 +11,7 @@ use std::io::{self, Write};
 use std::process;
 use std::rc::Rc;
 
-const VERSION: &str = "1.2.0";
+const VERSION: &str = "2.0.0 (Enterprise JIT/VM Edition)";
 
 #[cfg(target_os = "windows")]
 fn set_windows_console_font() {
@@ -79,6 +79,14 @@ fn main() {
             println!("ParvanLang v{}", VERSION);
             return;
         }
+        if first_arg == "--vm" {
+            if args.len() > 2 {
+                run_file_vm(&args[2]);
+            } else {
+                eprintln!("{} {}", "✖".red(), reshape_persian("لطفاً مسیر فایل را پس از vm-- وارد کنید."));
+            }
+            return;
+        }
         // Run file
         run_file(first_arg);
     } else {
@@ -87,15 +95,65 @@ fn main() {
     }
 }
 
+fn run_file_vm(filename: &str) {
+    let content = match fs::read_to_string(filename) {
+        Ok(c) => c,
+        Err(err) => {
+            let err_msg = format!("خطای خواندن فایل '{}': {}", filename, err);
+            eprintln!("  {} {}", "✖".red(), reshape_persian(&err_msg));
+            process::exit(1);
+        }
+    };
+
+    let lexer = Lexer::new(&content);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    if !parser.errors.is_empty() {
+        eprintln!();
+        eprintln!("  {}", reshape_persian("خطاهای نحوی در برنامه:").red().bold());
+        for err in parser.errors {
+            eprintln!("  {} {}", "•".red(), reshape_persian(&err));
+        }
+        eprintln!();
+        process::exit(1);
+    }
+
+    let mut compiler = parvan::compiler::Compiler::new();
+    let bytecode = match compiler.compile(&program) {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("  {} {}", "✖".red(), reshape_persian(&format!("خطای کامپایل بایت‌کد: {}", e)));
+            process::exit(1);
+        }
+    };
+
+    let mut vm = parvan::vm::Vm::new(bytecode);
+    match vm.run() {
+        Ok(obj) => {
+            if obj != object::Object::Nil {
+                let out_str = obj.to_string();
+                let shaped = reshape_persian(&out_str);
+                println!("  {} {}", "=".bright_black(), shaped.bright_yellow());
+            }
+        }
+        Err(e) => {
+            eprintln!("  {} {}", "✖".red(), reshape_persian(&format!("خطای ماشین مجازی: {}", e)));
+            process::exit(1);
+        }
+    }
+}
+
 fn print_help() {
     println!();
     println!("  {} {}", "⚡ ParvanLang".bright_cyan().bold(), format!("v{}", VERSION).bright_black());
-    println!("  {}  {}", "Parvan Programming Language".bright_white(), reshape_persian("زبان برنامه‌نویسی پروان").green());
+    println!("  {}  {}", "Parvan High-Performance Language".bright_white(), reshape_persian("زبان برنامه‌نویسی پیشرفته پروان").green());
     println!("  {}  {}", "Core Team: Ali Hasanifard, Ehsan Fazlinejad, Amirmehdi Shahbazi".bright_black(), reshape_persian("تیم سازنده: علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی").bright_black());
     println!();
     println!("  {} / {}", "Usage:".yellow().bold(), reshape_persian("نحوه استفاده:").yellow().bold());
     println!("    parvan                  Interactive Shell / {}", reshape_persian("ورود به محیط تعاملی پروان (REPL)"));
     println!("    parvan <file.prv>       Execute code file / {}", reshape_persian("اجرای فایل کد"));
+    println!("    parvan --vm <file.prv>  Run via Bytecode Virtual Machine / {}", reshape_persian("اجرا روی ماشین مجازی بایت‌کد"));
     println!("    parvan --version        Display version / {}", reshape_persian("نمایش نسخه"));
     println!("    parvan --help           Show help / {}", reshape_persian("راهنمای دستورات"));
     println!();
