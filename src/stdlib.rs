@@ -26,6 +26,7 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "trim" | "پیرایش" => Some(Object::Builtin(builtin_trim)),
         "uppercase" | "بزرگ" => Some(Object::Builtin(builtin_uppercase)),
         "lowercase" | "کوچک" => Some(Object::Builtin(builtin_lowercase)),
+        "reshape" | "جورچین" | "راست_به_چپ" => Some(Object::Builtin(builtin_reshape)),
         _ => None,
     }
 }
@@ -345,4 +346,16 @@ fn builtin_lowercase(args: Vec<Object>) -> Result<Object, String> {
         Object::Str(s) => Ok(Object::Str(s.to_lowercase())),
         _ => Err("آرگومان تابع lowercase باید رشته باشد.".to_string()),
     }
+}
+
+fn builtin_reshape(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err("تابع جورچین (reshape) یک آرگومان می‌پذیرد: متن برای چیدمان راست‌به‌چپ.".to_string());
+    }
+    let text = match &args[0] {
+        Object::Str(s) => s.clone(),
+        other => other.to_string(),
+    };
+    let reshaped = crate::persian::reshape_persian(&text);
+    Ok(Object::Str(reshaped))
 }

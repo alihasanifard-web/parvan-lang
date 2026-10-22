@@ -42,7 +42,9 @@ pub fn eval_statement(stmt: &Stmt, env: Rc<RefCell<Environment>>) -> Result<Obje
             let mut outputs = Vec::new();
             for arg in args {
                 let val = eval_expression(arg, env.clone())?;
-                outputs.push(val.to_string());
+                let text = val.to_string();
+                let shaped = crate::persian::reshape_persian(&text);
+                outputs.push(shaped);
             }
             println!("{}", outputs.join(" "));
             Ok(Object::Nil)

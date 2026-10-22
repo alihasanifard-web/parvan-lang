@@ -83,6 +83,18 @@ mod tests {
     }
 
     #[test]
+    fn test_persian_reshaper() {
+        let res = test_eval(r#"
+            جورچین("سلام");
+        "#).unwrap();
+        if let Object::Str(s) = res {
+            assert!(!s.is_empty());
+        } else {
+            panic!("Expected String from reshape");
+        }
+    }
+
+    #[test]
     fn test_try_catch_resilience() {
         let res = test_eval(r#"
             let caught = false;
