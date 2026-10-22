@@ -40,6 +40,8 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "http_post" | "ارسال_وب" => Some(Object::Builtin(builtin_http_post)),
         "alert" | "پیام_سیستم" => Some(Object::Builtin(builtin_alert)),
         "msgbox" | "جعبه_پیام" => Some(Object::Builtin(builtin_msgbox)),
+        "random" | "تصادفی" => Some(Object::Builtin(builtin_random)),
+        "sleep" | "صبر" => Some(Object::Builtin(builtin_sleep)),
         _ => None,
     }
 }
@@ -662,4 +664,52 @@ fn builtin_msgbox(args: Vec<Object>) -> Result<Object, String> {
         println!("[{}] {}", title, msg);
         Ok(Object::Bool(true))
     }
+}
+
+fn builtin_random(args: Vec<Object>) -> Result<Object, String> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .subsec_nanos() as u64;
+
+    // Pseudo-random number generator using wrapping multiplication to prevent overflow
+    let rand_val = nanos.wrapping_mul(6364136223846793005).wrapping_add(1) >> 33;
+
+    if args.is_empty() {
+        // Return float between 0.0 and 1.0
+        let f = (rand_val % 1000000) as f64 / 1000000.0;
+        return Ok(Object::Float(f));
+    }
+
+    if args.len() == 1 {
+        if let Object::Int(max) = args[0] {
+            if max <= 0 { return Ok(Object::Int(0)); }
+            return Ok(Object::Int((rand_val % (max as u64)) as i64));
+        }
+    }
+
+    if args.len() >= 2 {
+        if let (Object::Int(min), Object::Int(max)) = (&args[0], &args[1]) {
+            if min >= max { return Ok(Object::Int(*min)); }
+            let diff = (max - min) as u64;
+            let offset = (rand_val % diff) as i64;
+            return Ok(Object::Int(min + offset));
+        }
+    }
+
+    Ok(Object::Int((rand_val % 100) as i64))
+}
+
+fn builtin_sleep(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع sleep نیازمند مدت زمان بر حسب میلی‌ثانیه است.".to_string());
+    }
+    let ms = match &args[0] {
+        Object::Int(n) => *n as u64,
+        Object::Float(f) => *f as u64,
+        _ => return Err("مدت زمان باید عددی باشد.".to_string()),
+    };
+    std::thread::sleep(std::time::Duration::from_millis(ms));
+    Ok(Object::Nil)
 }

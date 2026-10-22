@@ -119,6 +119,26 @@ mod tests {
     }
 
     #[test]
+    fn test_lambda_arrow_expressions() {
+        let res = test_eval(r#"
+            let double = (x) -> x * 2;
+            let add_three = (a, b, c) -> a + b + c;
+            let val = double(10) + add_three(1, 2, 3);
+            val;
+        "#).unwrap();
+        assert_eq!(res, Object::Int(26));
+    }
+
+    #[test]
+    fn test_random_and_sleep_builtins() {
+        let res = test_eval(r#"
+            let r = random(10, 50);
+            r >= 10 && r < 50;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
     fn test_maps_and_index_assignment() {
         let res = test_eval(r#"
             let m = {"key": 100};

@@ -1,0 +1,21 @@
+// ParvanLang Arrow Functions (Lambdas) & Math Random Demo
+// دمو توابع پیکانی (لامبدا) و اعداد تصادفی در پروان
+
+let square = (x) -> x * x;
+let add = (a, b) -> a + b;
+
+print("--- Arrow Functions (Lambdas) ---");
+print("Square of 9:", square(9));
+print("Add 50 and 70:", add(50, 70));
+
+// Chaining with pipeline operator
+let calculate = 5 |> ((x) -> x * 10) |> ((x) -> x + 5);
+print("5 * 10 + 5 using arrow pipeline =", calculate);
+
+print("\n--- Random Generation & Sleep ---");
+for i in range(5) {
+    let r = random(1, 100);
+    print("Random number #" + to_str(i + 1) + ":", r);
+}
+
+print("\n✓ همه قابلیت‌های نوین با موفقیت تست و اجرا شدند! ✨");

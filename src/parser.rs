@@ -559,12 +559,18 @@ impl Parser {
                 Some(Expr::Prefix(PrefixOp::Minus, Box::new(right), tok))
             }
             TokenKind::LParen => {
-                self.next_token();
-                let expr = self.parse_expression(Precedence::Lowest);
-                if !self.expect_peek(TokenKind::RParen) {
-                    return None;
+                let _start_tok = self.cur_token.clone();
+                // Check if this is an arrow lambda like () -> expr or (x, y) -> expr
+                if let Some(lambda) = self.try_parse_arrow_lambda() {
+                    Some(lambda)
+                } else {
+                    self.next_token();
+                    let expr = self.parse_expression(Precedence::Lowest);
+                    if !self.expect_peek(TokenKind::RParen) {
+                        return None;
+                    }
+                    expr
                 }
-                expr
             }
             TokenKind::LBracket => self.parse_array_literal(),
             TokenKind::LBrace => self.parse_map_literal(),
@@ -689,6 +695,75 @@ impl Parser {
         }
 
         Some(list)
+    }
+
+    fn try_parse_arrow_lambda(&mut self) -> Option<Expr> {
+        let tok = self.cur_token.clone();
+        let clone_lexer = self.lexer.clone();
+        let clone_cur = self.cur_token.clone();
+        let clone_peek = self.peek_token.clone();
+
+        // Tentatively parse parameter list: (param1, param2, ...) ->
+        let mut params = Vec::new();
+        let mut is_lambda = false;
+
+        self.next_token(); // consume '('
+        if self.cur_token_is(&TokenKind::RParen) {
+            // empty params ()
+            if self.peek_token_is(&TokenKind::Arrow) {
+                is_lambda = true;
+                self.next_token(); // on '->'
+            }
+        } else if let TokenKind::Ident(ref p1) = self.cur_token.kind.clone() {
+            params.push(p1.clone());
+            let mut valid_param_list = true;
+            while self.peek_token_is(&TokenKind::Comma) {
+                self.next_token(); // on ','
+                self.next_token(); // on next ident
+                if let TokenKind::Ident(ref p) = self.cur_token.kind.clone() {
+                    params.push(p.clone());
+                } else {
+                    valid_param_list = false;
+                    break;
+                }
+            }
+            if valid_param_list && self.peek_token_is(&TokenKind::RParen) {
+                self.next_token(); // on ')'
+                if self.peek_token_is(&TokenKind::Arrow) {
+                    is_lambda = true;
+                    self.next_token(); // on '->'
+                }
+            }
+        }
+
+        if is_lambda {
+            self.next_token(); // on start of lambda body expression or block '{'
+            let body = if self.cur_token_is(&TokenKind::LBrace) {
+                self.parse_block_statement()
+            } else {
+                let expr = self.parse_expression(Precedence::Lowest)?;
+                BlockStmt {
+                    token: tok.clone(),
+                    statements: vec![Stmt::Return {
+                        value: Some(expr),
+                        token: tok.clone(),
+                    }],
+                }
+            };
+
+            Some(Expr::Function {
+                name: None,
+                params,
+                body,
+                token: tok,
+            })
+        } else {
+            // Rollback parser state
+            self.lexer = clone_lexer;
+            self.cur_token = clone_cur;
+            self.peek_token = clone_peek;
+            None
+        }
     }
 
     fn parse_function_literal(&mut self) -> Option<Expr> {
