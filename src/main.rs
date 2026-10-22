@@ -86,15 +86,26 @@ fn run_repl() {
     println!();
 
     let env = Rc::new(RefCell::new(Environment::new()));
+    let prompt = format!("  {} ", "›".bright_cyan().bold());
 
     loop {
-        print!("  {} ", "›".bright_cyan().bold());
-        io::stdout().flush().unwrap_or(());
+        let input_opt = match parvan::rtl_input::RtlLineReader::read_line(&prompt) {
+            Ok(opt) => opt,
+            Err(_) => {
+                // Fallback to standard input if not a tty / error
+                print!("{}", prompt);
+                io::stdout().flush().unwrap_or(());
+                let mut line = String::new();
+                if io::stdin().read_line(&mut line).is_err() {
+                    break;
+                }
+                Some(line)
+            }
+        };
 
-        let mut line = String::new();
-        match io::stdin().read_line(&mut line) {
-            Ok(0) => break,
-            Ok(_) => {
+        match input_opt {
+            None => break,
+            Some(line) => {
                 let trimmed = line.trim();
                 if trimmed.is_empty() {
                     continue;
@@ -127,10 +138,6 @@ fn run_repl() {
                         println!("  {} {}", "✖".red(), reshape_persian(&err));
                     }
                 }
-            }
-            Err(err) => {
-                eprintln!("  {} {}", "✖".red(), err);
-                break;
             }
         }
     }

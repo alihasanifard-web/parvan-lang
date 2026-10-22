@@ -133,14 +133,25 @@ fn builtin_range(args: Vec<Object>) -> Result<Object, String> {
 
 fn builtin_input(args: Vec<Object>) -> Result<Object, String> {
     use std::io::{self, Write};
-    if let Some(prompt) = args.first() {
-        print!("{}", prompt);
-        io::stdout().flush().unwrap_or(());
-    }
+    let prompt = if let Some(p) = args.first() {
+        let p_str = p.to_string();
+        crate::persian::reshape_persian(&p_str)
+    } else {
+        "".to_string()
+    };
 
-    let mut buffer = String::new();
-    io::stdin().read_line(&mut buffer).map_err(|e| e.to_string())?;
-    Ok(Object::Str(buffer.trim_end_matches(&['\r', '\n'][..]).to_string()))
+    match crate::rtl_input::RtlLineReader::read_line(&prompt) {
+        Ok(Some(line)) => Ok(Object::Str(line.trim_end_matches(&['\r', '\n'][..]).to_string())),
+        Ok(None) => Ok(Object::Nil),
+        Err(_) => {
+            // Fallback to standard input
+            print!("{}", prompt);
+            io::stdout().flush().unwrap_or(());
+            let mut buffer = String::new();
+            io::stdin().read_line(&mut buffer).map_err(|e| e.to_string())?;
+            Ok(Object::Str(buffer.trim_end_matches(&['\r', '\n'][..]).to_string()))
+        }
+    }
 }
 
 fn builtin_time(_args: Vec<Object>) -> Result<Object, String> {

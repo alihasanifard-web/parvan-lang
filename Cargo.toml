@@ -16,6 +16,7 @@ winres = "0.1"
 
 [dependencies]
 colored = "2.1.0"
+crossterm = "0.29.0"
 
 [lib]
 name = "parvan"

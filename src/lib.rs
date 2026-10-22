@@ -4,5 +4,6 @@ pub mod lexer;
 pub mod object;
 pub mod parser;
 pub mod persian;
+pub mod rtl_input;
 pub mod stdlib;
 pub mod token;
