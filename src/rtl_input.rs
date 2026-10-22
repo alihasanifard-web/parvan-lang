@@ -1,6 +1,6 @@
 use crossterm::{
     cursor,
-    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
     terminal::{self, ClearType},
 };
@@ -19,7 +19,14 @@ impl RtlLineReader {
         Self::render(&mut out, prompt, &buffer, cursor_idx)?;
 
         loop {
-            if let Event::Key(KeyEvent { code, modifiers, .. }) = event::read()? {
+            if let Event::Key(key_event) = event::read()? {
+                // Filter out KeyRelease on Windows! Only process Press or Repeat.
+                if key_event.kind == KeyEventKind::Release {
+                    continue;
+                }
+
+                let KeyEvent { code, modifiers, .. } = key_event;
+
                 match code {
                     KeyCode::Enter => {
                         // Print newline in normal mode
