@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn get_builtin(name: &str) -> Option<Object> {
     match name {
+        "println" | "چاپ_سطر" => Some(Object::Builtin(builtin_println)),
         "len" | "طول" => Some(Object::Builtin(builtin_len)),
         "push" | "افزودن" => Some(Object::Builtin(builtin_push)),
         "pop" | "حذف_آخر" => Some(Object::Builtin(builtin_pop)),
@@ -86,6 +87,14 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "spawn" | "پردازش_موازی" => Some(Object::Builtin(builtin_spawn)),
         _ => None,
     }
+}
+
+fn builtin_println(args: Vec<Object>) -> Result<Object, String> {
+    let parts: Vec<String> = args.iter().map(|arg| arg.to_string()).collect();
+    let text = parts.join(" ");
+    let shaped = crate::persian::reshape_persian(&text);
+    println!("{}", shaped);
+    Ok(Object::Nil)
 }
 
 fn builtin_len(args: Vec<Object>) -> Result<Object, String> {

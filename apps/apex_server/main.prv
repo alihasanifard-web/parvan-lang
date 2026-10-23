@@ -1,0 +1,97 @@
+// ==============================================================================
+// 🦋 PARVAN APEX SERVER & TELEMETRY ENGINE
+// پروژه کاربردی و عملیاتی واقعی نوشته‌شده به زبان ParvanLang v3.0
+// معماران هسته: علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی
+// ==============================================================================
+
+println("╔═══════════════════════════════════════════════════════════╗");
+println("║   🚀 راه اندازی سرور عملیاتی و سرویس تله متری پروان       ║");
+println("║   ParvanLang v3.0 Apex Enterprise Server Engine           ║");
+println("╚═══════════════════════════════════════════════════════════╝");
+println();
+
+// ۱. تعریف شمارنده وضعیت سرور (Enums)
+enum ServerStatus {
+    Starting,
+    Online,
+    UnderLoad,
+    Maintenance
+}
+
+// ۲. تعریف مدل شیءگرا برای کاربران و متریک‌ها (Structs & Methods)
+struct ServiceMetrics {
+    port,
+    active_connections,
+    uptime_seconds,
+    status,
+
+    fn report() {
+        let jalali_date = to_jalali(2026, 10, 23);
+        let info = "پورت: {self.port} | کانکشن ها: {self.active_connections} | وضعیت: {self.status} | تاریخ: {jalali_date}";
+        return info;
+    }
+}
+
+// ۳. راه اندازی پایگاه داده توکار با تراکنش های ACID
+println("  • در حال اتصال به پایگاه داده توکار پروان (Embedded DB)...");
+let db = db_open("parvan_server.db");
+db_exec(db, "CREATE TABLE system_logs");
+db_exec(db, "CREATE TABLE telemetry");
+
+// تراکنش ثبت لاگ راه اندازی
+db_begin(db);
+db_exec(db, "INSERT INTO system_logs", {
+    "event": "SERVER_BOOT",
+    "timestamp": now(),
+    "version": "3.0.0"
+});
+db_commit(db);
+println("  ✔ تراکنش لاگ سیستم با موفقیت تایید و ذخیره شد.");
+
+// ۴. راه اندازی کشینگ درون حافظه رم با TTL
+println("  • تنظیم لایه کشینگ سریع حافظه (In-Memory TTL Cache)...");
+cache_set("server_cluster", "PARVAN_NODE_ALPHA", 7200);
+cache_set("master_admin", "Ali Hasanifard", 86400);
+let cached_node = cache_get("server_cluster");
+println("  ✔ نود فعال بازیابی شده از کش: " + cached_node);
+
+// ۵. استفاده از کانال های ارتباطی همروند (Go-style Channels)
+println("  • ایجاد کانال های تبادل پیام تله متری (Message Channels)...");
+let metrics_ch = channel_create();
+channel_send(metrics_ch, "METRIC_CPU_NORMAL_28%");
+channel_send(metrics_ch, "METRIC_RAM_USED_310MB");
+
+let packet1 = channel_recv(metrics_ch);
+let packet2 = channel_recv(metrics_ch);
+println("  ✔ داده های دریافتی از کانال پردازش موازی: " + packet1 + " | " + packet2);
+
+// ۶. اعتبارسنجی ورودی ها با عبارات منظم (Native Regex)
+let test_email = "admin@parvan.org";
+let is_valid = regex_match("@", test_email);
+if is_valid {
+    println("  ✔ تطبیق آدرس ایمیل مدیریت تایید شد: " + test_email);
+}
+
+// ۷. ساخت نمونه سرویس و تولید گزارش رسمی
+let apex = ServiceMetrics(8080, 42, 120, ServerStatus.Online);
+println();
+println("  ⚡ وضعیت نهایی سرویس عملیاتی:");
+println("    " + apex.report());
+println();
+
+// ۸. بسته‌بندی پاسخ نهایی JSON برای کلاینت‌ها
+let server_payload = {
+    "service": "Parvan Apex Server",
+    "version": "3.0.0",
+    "node": cached_node,
+    "metrics": {
+        "connections": 42,
+        "secure": true
+    }
+};
+
+let json_output = json_stringify(server_payload);
+println("  📦 خروجی JSON تله‌متری آماده پاسخ به درخواست‌های شبکه:");
+println("    " + json_output);
+println();
+println("✔ تمامی قابلیت‌های نسخه ۳.۰ (DB, Cache, Regex, Channels, Structs, Jalali) با موفقیت در این سرویس اجرا شدند.");
