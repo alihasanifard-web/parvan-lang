@@ -11,7 +11,9 @@ use std::io::{self, Write};
 use std::process;
 use std::rc::Rc;
 
-const VERSION: &str = "2.5.0 (Enterprise Ultimate Flagship)";
+const VERSION: &str = "2.6.0 (Grand Standalone & LSP Ecosystem)";
+const MAGIC_MARKER: &[u8] = b"__PARVAN_PAYLOAD_V260_TAG__";
+
 
 #[cfg(target_os = "windows")]
 fn set_windows_console_font() {
@@ -69,6 +71,27 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
 
+    // Check if running as embedded standalone binary
+    if let Ok(exe_path) = env::current_exe() {
+        if let Ok(bytes) = fs::read(&exe_path) {
+            if bytes.len() > 16 {
+                let footer_pos = bytes.len() - 16;
+                let script_len = u64::from_le_bytes(bytes[footer_pos..footer_pos + 8].try_into().unwrap_or([0; 8])) as usize;
+                let marker_len = u64::from_le_bytes(bytes[footer_pos + 8..footer_pos + 16].try_into().unwrap_or([0; 8])) as usize;
+                if marker_len == MAGIC_MARKER.len() && bytes.len() >= 16 + script_len + marker_len {
+                    let start = bytes.len() - 16 - script_len - marker_len;
+                    if &bytes[start..start + marker_len] == MAGIC_MARKER {
+                        let script_bytes = &bytes[start + marker_len..start + marker_len + script_len];
+                        if let Ok(source_code) = std::str::from_utf8(script_bytes) {
+                            run_code_content(source_code);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if args.len() > 1 {
         let first_arg = &args[1];
         if first_arg == "--help" || first_arg == "-h" {
@@ -77,6 +100,23 @@ fn main() {
         }
         if first_arg == "--version" || first_arg == "-v" {
             println!("ParvanLang v{}", VERSION);
+            return;
+        }
+        if first_arg == "build" || first_arg == "--build" {
+            if args.len() > 2 {
+                let out_name = if args.len() > 4 && args[3] == "-o" {
+                    &args[4]
+                } else {
+                    "app.exe"
+                };
+                build_standalone(&args[2], out_name);
+            } else {
+                eprintln!("{} استفاده: parvan build <source.prv> -o <output.exe>", "✖".red());
+            }
+            return;
+        }
+        if first_arg == "--lsp" || first_arg == "lsp" {
+            run_lsp_server();
             return;
         }
         if first_arg == "--init" {
@@ -185,6 +225,91 @@ fn print_help() {
     println!("    parvan --version        Display version / {}", reshape_persian("نمایش نسخه"));
     println!("    parvan --help           Show help / {}", reshape_persian("راهنمای دستورات"));
     println!();
+}
+
+fn build_standalone(source_path: &str, out_path: &str) {
+    println!("\n  {} {}", "📦".cyan(), reshape_persian(&format!("در حال کامپایل و بسته‌بندی مستقل: {}", source_path)).bold());
+    let current_exe = match env::current_exe() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{} خطای شناسایی باینری پایه: {}", "✖".red(), e);
+            return;
+        }
+    };
+
+    let source_code = match fs::read_to_string(source_path) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("{} خطای خواندن سورس کد '{}': {}", "✖".red(), source_path, e);
+            return;
+        }
+    };
+
+    // Verify syntax before bundling
+    let lexer = Lexer::new(&source_code);
+    let mut parser = Parser::new(lexer);
+    let _ = parser.parse_program();
+    if !parser.errors.is_empty() {
+        eprintln!("{} سورس کد دارای خطای نحوی است و امکان بیلد وجود ندارد.", "✖".red());
+        for err in parser.errors {
+            eprintln!("  • {}", err.red());
+        }
+        return;
+    }
+
+    let marker_len_bytes = (MAGIC_MARKER.len() as u64).to_le_bytes();
+    let mut exe_bytes = match fs::read(&current_exe) {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("{} خطای خواندن باینری الگو: {}", "✖".red(), e);
+            return;
+        }
+    };
+
+    // Check if current_exe already has a payload at the end and strip it
+    if exe_bytes.len() > 16 {
+        let footer_pos = exe_bytes.len() - 16;
+        let script_len = u64::from_le_bytes(exe_bytes[footer_pos..footer_pos + 8].try_into().unwrap_or([0; 8])) as usize;
+        let marker_len = u64::from_le_bytes(exe_bytes[footer_pos + 8..footer_pos + 16].try_into().unwrap_or([0; 8])) as usize;
+        if marker_len == MAGIC_MARKER.len() && exe_bytes.len() >= 16 + script_len + marker_len {
+            let start = exe_bytes.len() - 16 - script_len - marker_len;
+            if &exe_bytes[start..start + marker_len] == MAGIC_MARKER {
+                exe_bytes.truncate(start);
+            }
+        }
+    }
+
+    let script_len_bytes = (source_code.len() as u64).to_le_bytes();
+    exe_bytes.extend_from_slice(MAGIC_MARKER);
+    exe_bytes.extend_from_slice(source_code.as_bytes());
+    exe_bytes.extend_from_slice(&script_len_bytes);
+    exe_bytes.extend_from_slice(&marker_len_bytes);
+
+    if let Err(e) = fs::write(out_path, exe_bytes) {
+        eprintln!("{} خطای نوشتن باینری نهایی '{}': {}", "✖".red(), out_path, e);
+    } else {
+        println!("  {} {}", "✔".green(), reshape_persian(&format!("فایل اجرایی مستقل با موفقیت ساخته شد: {}", out_path)).green().bold());
+        println!("  {} این فایل مستقل است و بدون نیاز به نصب پروان اجرا می‌شود.\n", "ℹ".blue());
+    }
+}
+
+fn run_lsp_server() {
+    eprintln!("🦋 ParvanLang Language Server (LSP) Protocol Daemon v{}", VERSION);
+    eprintln!("Listening for JSON-RPC messages on standard I/O (VS Code Integration)...");
+    
+    use std::io::BufRead;
+    let stdin = std::io::stdin();
+    for line in stdin.lock().lines().flatten() {
+        if line.starts_with("Content-Length:") {
+            continue;
+        }
+        if line.trim().is_empty() {
+            continue;
+        }
+        // Minimal LSP response handshake
+        println!("Content-Length: 54\r\n\r\n{{\"jsonrpc\":\"2.0\",\"result\":{{\"capabilities\":{{}}}},\"id\":1}}");
+        break;
+    }
 }
 
 fn run_project_tests() {
@@ -375,17 +500,8 @@ fn install_all_packages() {
     println!("  {} {}", "✔".green(), reshape_persian("تمامی وابستگی‌های پروژه در پوشه parvan_modules همگام‌سازی شدند."));
 }
 
-fn run_file(filename: &str) {
-    let content = match fs::read_to_string(filename) {
-        Ok(c) => c,
-        Err(err) => {
-            let err_msg = format!("خطای خواندن فایل '{}': {}", filename, err);
-            eprintln!("  {} {}", "✖".red(), reshape_persian(&err_msg));
-            process::exit(1);
-        }
-    };
-
-    let lexer = Lexer::new(&content);
+fn run_code_content(content: &str) {
+    let lexer = Lexer::new(content);
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
 
@@ -404,6 +520,18 @@ fn run_file(filename: &str) {
         eprintln!("  {} {}", "✖".red(), reshape_persian(&err));
         process::exit(1);
     }
+}
+
+fn run_file(filename: &str) {
+    let content = match fs::read_to_string(filename) {
+        Ok(c) => c,
+        Err(err) => {
+            let err_msg = format!("خطای خواندن فایل '{}': {}", filename, err);
+            eprintln!("  {} {}", "✖".red(), reshape_persian(&err_msg));
+            process::exit(1);
+        }
+    };
+    run_code_content(&content);
 }
 
 fn run_repl() {

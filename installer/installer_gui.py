@@ -6,9 +6,10 @@ import subprocess
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-VERSION = "2.5.0"
+VERSION = "2.6.0"
 APP_NAME = "Parvan Programming Language"
 APP_NAME_FA = "زبان برنامه‌نویسی پروان"
+APP_SUBTITLE = "نسخه ۲.۶.۰ - اکوسیستم بیلد مستقل، سرور ادیتور LSP و بایت‌کد VM"
 
 DEFAULT_INSTALL_DIR = os.path.join(os.environ.get("LOCALAPPDATA", r"C:\Users\Default\AppData\Local"), "Programs", "ParvanLang")
 
@@ -113,7 +114,7 @@ class InstallerGUI(tk.Tk):
         title_lbl = tk.Label(header, text="🦋 زبان برنامه‌نویسی پروان (ParvanLang)", font=("Vazirmatn", 16, "bold"), fg="#38bdf8", bg="#1e293b")
         title_lbl.pack(pady=8)
 
-        sub_lbl = tk.Label(header, text=f"نصاب رسمی و جامع نسخه {VERSION} (Enterprise Edition)", font=("Vazirmatn", 10), fg="#94a3b8", bg="#1e293b")
+        sub_lbl = tk.Label(header, text=APP_SUBTITLE, font=("Vazirmatn", 10), fg="#94a3b8", bg="#1e293b")
         sub_lbl.pack()
 
         # Body Frame

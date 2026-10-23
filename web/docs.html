@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ParvanLang Documentation | مستندات رسمی زبان برنامه‌نویسی پروان</title>
+  <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+  <style>
+    :root {
+      --bg: #090d16;
+      --card: #111827;
+      --card-hover: #1f2937;
+      --border: #1f2937;
+      --primary: #38bdf8;
+      --accent: #c084fc;
+      --text: #f9fafb;
+      --text-muted: #9ca3af;
+      --code-bg: #030712;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    header {
+      background: rgba(17, 24, 39, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-links {
+      display: flex;
+      gap: 20px;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover {
+      color: var(--primary);
+    }
+    .hero {
+      text-align: center;
+      padding: 80px 20px 60px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #38bdf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 20px;
+    }
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      margin-bottom: 30px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+    .btn {
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #090d16;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+    }
+    .btn-secondary {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      margin-bottom: 60px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      transition: all 0.2s;
+    }
+    .card:hover {
+      border-color: var(--primary);
+      transform: translateY(-4px);
+    }
+    .card h3 {
+      color: var(--primary);
+      margin-bottom: 12px;
+      font-size: 1.25rem;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      font-family: 'Consolas', monospace;
+      direction: ltr;
+      text-align: left;
+      overflow-x: auto;
+      margin-top: 12px;
+      font-size: 14px;
+      color: #38bdf8;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <span>🦋 ParvanLang</span>
+      <span style="font-size: 0.8rem; background: #1e293b; padding: 2px 8px; border-radius: 6px; color: #38bdf8;">v2.6.0</span>
+    </div>
+    <div class="nav-links">
+      <a href="#quickstart">شروع سریع</a>
+      <a href="#features">ویژگی‌ها</a>
+      <a href="#builtins">توابع استاندارد</a>
+      <a href="#github">گیت‌هاب</a>
+    </div>
+  </header>
+
+  <div class="hero">
+    <h1>زبان برنامه‌نویسی پروان (ParvanLang)</h1>
+    <p>زبان برنامه‌نویسی فوق‌العاده سریع، دوزبانه (فارسی و انگلیسی)، چندپارادایمی و مستقل توسعه‌یافته با زبان قدرتمند Rust همراه با ماشین مجازی بایت‌کد و پایگاه داده توکار.</p>
+    <div class="btn-group">
+      <a href="#quickstart" class="btn btn-primary">شروع یادگیری</a>
+      <a href="https://github.com/alihasanifard-web/parvan-lang" target="_blank" class="btn btn-secondary">مخزن در گیت‌هاب</a>
+    </div>
+  </div>
+
+  <div class="container" id="features">
+    <div class="grid">
+      <div class="card">
+        <h3>⚡ ماشین مجازی بایت‌کد (Stack VM)</h3>
+        <p>سرعت مافوق صوت با کامپایل مستقیم کدهای AST به اوپ‌کدهای بایت‌کد و اجرای شتاب‌یافته روی استک ماشین مجازی.</p>
+        <pre>parvan --vm script.prv</pre>
+      </div>
+
+      <div class="card">
+        <h3>🏛️ شیءگرایی و ساختارها (Structs & Methods)</h3>
+        <p>تعریف ساختارها با فیلدها و متدها، و اتصال خودکار اشاره‌گر <code>self</code> یا <code>این</code> به دو زبان فارسی و انگلیسی.</p>
+        <pre>struct User {
+    name, score,
+    fn info() { return self.name; }
+}</pre>
+      </div>
+
+      <div class="card">
+        <h3>🗄️ پایگاه داده و میکروسرور وب توکار</h3>
+        <p>توابع بومی <code>db_open</code>، <code>db_exec</code> و شنود درخواست‌های وب شبکه با <code>http_listen</code> بدون نیاز به کتابخانه خارجی.</p>
+        <pre>let db = db_open("data.db");
+db_exec(db, "CREATE TABLE users");</pre>
+      </div>
+
+      <div class="card">
+        <h3>📦 بیلد اجرایی مستقل (Standalone Binary)</h3>
+        <p>امکان ساخت فایل <code>.exe</code> مستقل از کدهای منبع پروان بدون نیاز به نصب هیچ مفسری روی سیستم مشتری.</p>
+        <pre>parvan build main.prv -o app.exe</pre>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>توسعه‌یافته توسط تیم پروان: علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی</p>
+    <p style="margin-top: 8px;">تحت مجوز رسمی MIT License</p>
+  </footer>
+</body>
+</html>
