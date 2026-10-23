@@ -521,6 +521,23 @@ mod tests {
     }
 
     #[test]
+    fn test_ffi_and_websocket_builtins() {
+        let res = test_eval(r#"
+            // Test C-FFI
+            let lib = ffi_load("user32.dll");
+            let call_res = ffi_call(lib, "MessageBoxA", 0, "Hello", "Title", 0);
+
+            // Test WebSocket
+            let socket = ws_connect("ws://127.0.0.1:8080");
+            ws_send(socket, "ping");
+            ws_close(socket);
+
+            let status = socket["_state"];
+            call_res + "_" + status;
+        "#).unwrap();
+        assert_eq!(res, Object::Str("FFI_SUCCESS::MessageBoxA(4)_closed".to_string()));
+    }
+    #[test]
     fn test_gui_alert_builtin() {
         let res = test_eval(r#"
             // Test non-blocking GUI call

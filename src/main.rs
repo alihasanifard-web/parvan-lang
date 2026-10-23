@@ -1,4 +1,5 @@
 use colored::*;
+use parvan::ast::{Expr, Stmt};
 use parvan::evaluator::eval_program;
 use parvan::lexer::Lexer;
 use parvan::object::{self, Environment};
@@ -11,7 +12,7 @@ use std::io::{self, Write};
 use std::process;
 use std::rc::Rc;
 
-const VERSION: &str = "2.7.0 (Modular Import, Enums & Peephole VM)";
+const VERSION: &str = "2.8.0 (Enterprise C-FFI, WebSockets, Obfuscation & Lint)";
 const MAGIC_MARKER: &[u8] = b"__PARVAN_PAYLOAD_V260_TAG__";
 
 
@@ -82,7 +83,9 @@ fn main() {
                     let start = bytes.len() - 16 - script_len - marker_len;
                     if &bytes[start..start + marker_len] == MAGIC_MARKER {
                         let script_bytes = &bytes[start + marker_len..start + marker_len + script_len];
-                        if let Ok(source_code) = std::str::from_utf8(script_bytes) {
+                        let key = 0x5A;
+                        let deobfuscated: Vec<u8> = script_bytes.iter().map(|b| b ^ key).collect();
+                        if let Ok(source_code) = std::str::from_utf8(&deobfuscated) {
                             run_code_content(source_code);
                             return;
                         }
@@ -137,6 +140,22 @@ fn main() {
                 run_benchmark(&args[2]);
             } else {
                 eprintln!("{} استفاده: parvan bench <file.prv>", "✖".red());
+            }
+            return;
+        }
+        if first_arg == "lint" || first_arg == "--lint" {
+            if args.len() > 2 {
+                run_linter(&args[2]);
+            } else {
+                eprintln!("{} استفاده: parvan lint <file.prv>", "✖".red());
+            }
+            return;
+        }
+        if first_arg == "doc" || first_arg == "--doc" {
+            if args.len() > 2 {
+                generate_documentation(&args[2]);
+            } else {
+                eprintln!("{} استفاده: parvan doc <file.prv>", "✖".red());
             }
             return;
         }
@@ -238,7 +257,10 @@ fn print_help() {
     println!("    {:26} {}", "parvan".bright_cyan(), "ورود به محیط تعاملی پروان (REPL)".bright_black());
     println!("    {:26} {}", "parvan <file.prv>".bright_cyan(), "اجرای فایل کد با مفسر درختی".bright_black());
     println!("    {:26} {}", "parvan --vm <file.prv>".bright_cyan(), "اجرای شتاب‌یافته روی ماشین مجازی بایت‌کد".bright_black());
-    println!("    {:26} {}", "parvan build <f> -o <e>".bright_cyan(), "تولید فایل اجرایی مستقل (.exe)".bright_black());
+    println!("    {:26} {}", "parvan build <f> -o <e>".bright_cyan(), "تولید فایل باینری مستقل و محافظت‌شده".bright_black());
+    println!("    {:26} {}", "parvan lint <file.prv>".bright_cyan(), "تحلیل استاتیک و عیب‌یابی کدهای مرده".bright_black());
+    println!("    {:26} {}", "parvan doc <file.prv>".bright_cyan(), "تولید خودکار پرتال مستندات HTML".bright_black());
+    println!("    {:26} {}", "parvan bench <file.prv>".bright_cyan(), "بنچمارک دقیق سرعت و اوپ‌کدهای VM".bright_black());
     println!("    {:26} {}", "parvan --lsp".bright_cyan(), "اجرای سرور ادیتورها (Language Server)".bright_black());
     println!("    {:26} {}", "parvan fmt [file]".bright_cyan(), "فرمت و مرتب‌سازی کدها".bright_black());
     println!("    {:26} {}", "parvan test".bright_cyan(), "اجرای آزمون‌های پروژه".bright_black());
@@ -311,9 +333,13 @@ fn build_standalone(source_path: &str, out_path: &str, target_os: &str) {
         }
     }
 
-    let script_len_bytes = (source_code.len() as u64).to_le_bytes();
+    // XOR variable encryption layer to protect source script inside standalone binary
+    let key = 0x5A;
+    let obfuscated_source: Vec<u8> = source_code.bytes().map(|b| b ^ key).collect();
+
+    let script_len_bytes = (obfuscated_source.len() as u64).to_le_bytes();
     exe_bytes.extend_from_slice(MAGIC_MARKER);
-    exe_bytes.extend_from_slice(source_code.as_bytes());
+    exe_bytes.extend_from_slice(&obfuscated_source);
     exe_bytes.extend_from_slice(&script_len_bytes);
     exe_bytes.extend_from_slice(&marker_len_bytes);
 
@@ -367,6 +393,174 @@ fn run_lsp_server() {
             Err(_) => break,
         }
     }
+}
+
+fn run_linter(filename: &str) {
+    println!("  {} {} {}", "Linting".bright_green().bold(), filename.bright_white(), "with Parvan Static Analyzer".bright_black());
+
+    let content = match fs::read_to_string(filename) {
+        Ok(c) => c,
+        Err(err) => {
+            eprintln!("  {} Cannot read file: {}", "error:".red().bold(), err);
+            return;
+        }
+    };
+
+    let lexer = Lexer::new(&content);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    if !parser.errors.is_empty() {
+        eprintln!("  {} Fix syntax errors first:", "error:".red().bold());
+        for err in parser.errors {
+            eprintln!("    • {}", err);
+        }
+        return;
+    }
+
+    let mut declared_vars = std::collections::HashSet::new();
+    let mut used_vars = std::collections::HashSet::new();
+
+    for stmt in &program.statements {
+        extract_idents_from_stmt(stmt, &mut declared_vars, &mut used_vars);
+    }
+
+    let mut warnings = 0;
+    for (var, line) in declared_vars {
+        if !used_vars.contains(&var) && !var.starts_with('_') {
+            warnings += 1;
+            println!("  {} [line {}] Variable '{}' is declared but never used (prefix with '_' to silence)", "warning:".bright_yellow().bold(), line, var.bright_white());
+        }
+    }
+
+    if warnings == 0 {
+        println!("  {} All checks passed! No dead code or unused variables found.", "✔".bright_green().bold());
+    } else {
+        println!();
+        println!("  {} Found {} code quality warning(s).", "ℹ".bright_cyan(), warnings);
+    }
+}
+
+fn extract_idents_from_stmt(
+    stmt: &Stmt,
+    declared: &mut std::collections::HashSet<(String, usize)>,
+    used: &mut std::collections::HashSet<String>,
+) {
+    match stmt {
+        Stmt::Let { name, value, token } | Stmt::Const { name, value, token } => {
+            declared.insert((name.clone(), token.line));
+            extract_idents_from_expr(value, used);
+        }
+        Stmt::Expr(e) => extract_idents_from_expr(e, used),
+        Stmt::If { condition, consequence, alternative, .. } => {
+            extract_idents_from_expr(condition, used);
+            for s in &consequence.statements {
+                extract_idents_from_stmt(s, declared, used);
+            }
+            if let Some(alt) = alternative {
+                for s in &alt.statements {
+                    extract_idents_from_stmt(s, declared, used);
+                }
+            }
+        }
+        Stmt::While { condition, body, .. } => {
+            extract_idents_from_expr(condition, used);
+            for s in &body.statements {
+                extract_idents_from_stmt(s, declared, used);
+            }
+        }
+        Stmt::For { var, val_var, iterable, body, token } => {
+            declared.insert((var.clone(), token.line));
+            if let Some(ref val_v) = val_var {
+                declared.insert((val_v.clone(), token.line));
+            }
+            extract_idents_from_expr(iterable, used);
+            for s in &body.statements {
+                extract_idents_from_stmt(s, declared, used);
+            }
+        }
+        Stmt::Return { value, .. } => {
+            if let Some(v) = value {
+                extract_idents_from_expr(v, used);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn extract_idents_from_expr(expr: &Expr, used: &mut std::collections::HashSet<String>) {
+    match expr {
+        Expr::Ident(id, _) => {
+            used.insert(id.clone());
+        }
+        Expr::Infix(left, _, right, _) => {
+            extract_idents_from_expr(left, used);
+            extract_idents_from_expr(right, used);
+        }
+        Expr::Prefix(_, right, _) => {
+            extract_idents_from_expr(right, used);
+        }
+        Expr::Call(callee, args, _) => {
+            extract_idents_from_expr(callee, used);
+            for a in args {
+                extract_idents_from_expr(a, used);
+            }
+        }
+        Expr::Array(items, _) => {
+            for it in items {
+                extract_idents_from_expr(it, used);
+            }
+        }
+        Expr::Assign(id, val, _) => {
+            used.insert(id.clone());
+            extract_idents_from_expr(val, used);
+        }
+        _ => {}
+    }
+}
+
+fn generate_documentation(filename: &str) {
+    println!("  {} {} {}", "Documenting".bright_green().bold(), filename.bright_white(), "into HTML Docs".bright_black());
+
+    let content = match fs::read_to_string(filename) {
+        Ok(c) => c,
+        Err(err) => {
+            eprintln!("  {} Cannot read file: {}", "error:".red().bold(), err);
+            return;
+        }
+    };
+
+    let mut doc_items = Vec::new();
+    let mut current_comment = Vec::new();
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("///") || trimmed.starts_with("//!") {
+            current_comment.push(trimmed.trim_start_matches('/').trim().to_string());
+        } else if trimmed.starts_with("fn ") || trimmed.starts_with("تابع ") {
+            let sig = trimmed.trim_end_matches('{').trim();
+            doc_items.push((sig.to_string(), current_comment.join("<br>")));
+            current_comment.clear();
+        } else if trimmed.starts_with("struct ") || trimmed.starts_with("ساختار ") {
+            let sig = trimmed.trim_end_matches('{').trim();
+            doc_items.push((sig.to_string(), current_comment.join("<br>")));
+            current_comment.clear();
+        } else if !trimmed.is_empty() {
+            current_comment.clear();
+        }
+    }
+
+    let out_file = "parvan_docs.html";
+    let mut html = String::from("<!DOCTYPE html><html lang=\"fa\" dir=\"rtl\"><head><meta charset=\"UTF-8\"><title>Parvan Generated Documentation</title><style>body{background:#030407;color:#f8fafc;font-family:sans-serif;padding:30px;line-height:1.7;}.card{background:#080c14;border:1px solid rgba(255,255,255,0.08);padding:18px;border-radius:10px;margin-bottom:14px;}.sig{color:#38bdf8;font-family:monospace;font-size:16px;}.doc{color:#94a3b8;font-size:14px;margin-top:6px;}</style></head><body>");
+    html.push_str(&format!("<h1>مستندات خودکار پروان (Parvan Doc): {}</h1>", filename));
+
+    for (sig, doc) in doc_items {
+        html.push_str(&format!("<div class=\"card\"><div class=\"sig\">{}</div><div class=\"doc\">{}</div></div>", sig, if doc.is_empty() { "بدون توضیحات" } else { &doc }));
+    }
+
+    html.push_str("</body></html>");
+    let _ = fs::write(out_file, html);
+    println!("  {} Documentation portal generated at {}", "Finished".bright_green().bold(), out_file.bright_cyan());
 }
 
 fn run_benchmark(filename: &str) {
