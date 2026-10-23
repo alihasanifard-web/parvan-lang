@@ -3,212 +3,557 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ParvanLang Documentation | مستندات رسمی زبان برنامه‌نویسی پروان</title>
+  <title>ParvanLang | اکوسیستم مدرن زبان برنامه‌نویسی پروان</title>
+  
+  <!-- Typography: Vazirmatn & JetBrains Mono -->
   <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
   <style>
+    /* Linear & Cyberpunk Ultra-Luxury Tokens */
     :root {
-      --bg: #090d16;
-      --card: #111827;
-      --card-hover: #1f2937;
-      --border: #1f2937;
-      --primary: #38bdf8;
-      --accent: #c084fc;
-      --text: #f9fafb;
-      --text-muted: #9ca3af;
-      --code-bg: #030712;
+      --bg-canvas: #06080d;
+      --bg-panel: rgba(13, 17, 27, 0.7);
+      --bg-surface: rgba(255, 255, 255, 0.03);
+      --bg-surface-hover: rgba(255, 255, 255, 0.06);
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-bright: rgba(56, 189, 248, 0.35);
+      --primary-cyan: #38bdf8;
+      --cyan-glow: rgba(56, 189, 248, 0.4);
+      --electric-magenta: #c084fc;
+      --magenta-glow: rgba(192, 132, 252, 0.35);
+      --text-white: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --code-bg: #030509;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    
     body {
       font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg-canvas);
+      color: var(--text-white);
       line-height: 1.7;
+      overflow-x: hidden;
     }
+
+    /* Ambient Quantum Aura Background */
+    .ambient-glow-1 {
+      position: absolute;
+      top: -120px;
+      left: 15%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, transparent 70%);
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .ambient-glow-2 {
+      position: absolute;
+      top: 250px;
+      right: 10%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(192, 132, 252, 0.12) 0%, transparent 70%);
+      filter: blur(90px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Sticky Glass Header */
     header {
-      background: rgba(17, 24, 39, 0.8);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
       z-index: 100;
-      padding: 16px 32px;
+      background: rgba(6, 8, 13, 0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 14px 40px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .logo {
-      font-size: 1.4rem;
-      font-weight: 800;
-      color: var(--primary);
+
+    .brand-wrap {
       display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-logo-img {
+      width: 40px;
+      height: 40px;
+      filter: drop-shadow(0 0 12px var(--cyan-glow));
+      transition: transform 0.3s ease;
+    }
+    .brand-wrap:hover .brand-logo-img {
+      transform: scale(1.08) rotate(3deg);
+    }
+
+    .brand-title {
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 40%, var(--primary-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-items {
+      display: flex;
+      gap: 28px;
+      align-items: center;
+    }
+    .nav-items a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: color 0.2s, transform 0.2s;
+    }
+    .nav-items a:hover {
+      color: var(--primary-cyan);
+      transform: translateY(-1px);
+    }
+
+    /* Hero Section */
+    .hero-container {
+      position: relative;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 90px 24px 60px;
+      text-align: center;
+      z-index: 10;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--primary-cyan);
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 28px;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+      backdrop-filter: blur(8px);
+    }
+    .badge-pill .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary-cyan);
+      box-shadow: 0 0 8px var(--primary-cyan);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .hero-logo-box {
+      margin-bottom: 24px;
+      position: relative;
+      display: inline-block;
+    }
+    .hero-logo-box img {
+      width: 170px;
+      height: 170px;
+      filter: drop-shadow(0 0 45px var(--cyan-glow)) drop-shadow(0 0 70px var(--magenta-glow));
+      animation: floatLogo 6s ease-in-out infinite;
+    }
+    @keyframes floatLogo {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .hero-title {
+      font-size: 3.6rem;
+      font-weight: 900;
+      letter-spacing: -1.2px;
+      line-height: 1.18;
+      margin-bottom: 22px;
+      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 60%, var(--primary-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      font-size: 1.28rem;
+      color: var(--text-muted);
+      max-width: 820px;
+      margin: 0 auto 38px;
+      font-weight: 400;
+    }
+
+    .cta-cluster {
+      display: flex;
+      gap: 18px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-main {
+      padding: 13px 32px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-flex;
       align-items: center;
       gap: 10px;
     }
-    .nav-links {
+    .btn-glow {
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      color: #040810;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 25px var(--cyan-glow);
+    }
+    .btn-glow:hover {
+      box-shadow: 0 0 35px rgba(56, 189, 248, 0.65);
+      transform: translateY(-2px);
+    }
+    .btn-ghost {
+      background: var(--bg-surface);
+      color: var(--text-white);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(10px);
+    }
+    .btn-ghost:hover {
+      background: var(--bg-surface-hover);
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-2px);
+    }
+
+    /* Interactive Live Terminal Showcase */
+    .terminal-section {
+      max-width: 1050px;
+      margin: 40px auto 80px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 10;
+    }
+    .terminal-window {
+      background: rgba(10, 14, 23, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255,255,255,0.05);
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+    }
+    .terminal-header {
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 18px;
       display: flex;
-      gap: 20px;
+      justify-content: space-between;
+      align-items: center;
     }
-    .nav-links a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover {
-      color: var(--primary);
-    }
-    .hero {
-      text-align: center;
-      padding: 80px 20px 60px;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-    .hero h1 {
-      font-size: 3rem;
-      font-weight: 900;
-      background: linear-gradient(135deg, #38bdf8, #c084fc);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 20px;
-    }
-    .hero p {
-      font-size: 1.25rem;
-      color: var(--text-muted);
-      margin-bottom: 30px;
-    }
-    .btn-group {
+    .terminal-dots {
       display: flex;
-      gap: 16px;
-      justify-content: center;
+      gap: 8px;
     }
-    .btn {
-      padding: 12px 28px;
-      border-radius: 10px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: all 0.2s;
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
     }
-    .btn-primary {
-      background: var(--primary);
-      color: #090d16;
-    }
-    .btn-primary:hover {
-      box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
-    }
-    .btn-secondary {
-      background: var(--card);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 40px 24px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
-      margin-bottom: 60px;
-    }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      transition: all 0.2s;
-    }
-    .card:hover {
-      border-color: var(--primary);
-      transform: translateY(-4px);
-    }
-    .card h3 {
-      color: var(--primary);
-      margin-bottom: 12px;
-      font-size: 1.25rem;
-    }
-    pre {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      font-family: 'Consolas', monospace;
+    .dot-red { background: #ef4444; opacity: 0.8; }
+    .dot-yellow { background: #f59e0b; opacity: 0.8; }
+    .dot-green { background: #10b981; opacity: 0.8; }
+
+    .terminal-body {
+      padding: 24px 30px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
       direction: ltr;
       text-align: left;
-      overflow-x: auto;
-      margin-top: 12px;
-      font-size: 14px;
-      color: #38bdf8;
+      line-height: 1.8;
+      color: #cbd5e1;
     }
-    footer {
-      border-top: 1px solid var(--border);
+    .code-comment { color: #64748b; }
+    .code-keyword { color: #c084fc; font-weight: 600; }
+    .code-fn { color: #38bdf8; }
+    .code-string { color: #34d399; }
+    .code-num { color: #f59e0b; }
+
+    /* Bento Grid Features */
+    .features-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px 24px 100px;
+      position: relative;
+      z-index: 10;
+    }
+    .section-headline {
       text-align: center;
-      padding: 40px 20px;
+      margin-bottom: 50px;
+    }
+    .section-headline h2 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .section-headline p {
       color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .bento-grid { grid-template-columns: 1fr; }
+      .hero-title { font-size: 2.6rem; }
+    }
+
+    .bento-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 32px 28px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .bento-card::before {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; left: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.4), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .bento-card:hover {
+      background: var(--bg-surface-hover);
+      border-color: var(--border-bright);
+      transform: translateY(-4px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 25px rgba(56, 189, 248, 0.15);
+    }
+    .bento-card:hover::before { opacity: 1; }
+
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: 20px;
+      display: inline-block;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+    }
+    .card-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-white);
+      margin-bottom: 12px;
+    }
+    .card-desc {
+      color: var(--text-muted);
+      font-size: 0.98rem;
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+    .card-snippet {
+      background: var(--code-bg);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.86rem;
+      direction: ltr;
+      text-align: left;
+      color: var(--primary-cyan);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      background: rgba(4, 6, 10, 0.9);
+      padding: 50px 24px;
+      text-align: center;
+      color: var(--text-dim);
       font-size: 0.95rem;
+      position: relative;
+      z-index: 10;
+    }
+    .footer-team {
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
+
+  <!-- Background Quantum Lighting -->
+  <div class="ambient-glow-1"></div>
+  <div class="ambient-glow-2"></div>
+
+  <!-- Header -->
   <header>
-    <div class="logo">
-      <img src="logo.svg" alt="ParvanLang Logo" style="width: 36px; height: 36px; border-radius: 8px;" />
-      <span>🦋 ParvanLang</span>
-      <span style="font-size: 0.8rem; background: #1e293b; padding: 2px 8px; border-radius: 6px; color: #38bdf8;">v2.6.0</span>
-    </div>
-    <div class="nav-links">
-      <a href="#quickstart">شروع سریع</a>
-      <a href="#features">ویژگی‌ها</a>
-      <a href="#builtins">توابع استاندارد</a>
-      <a href="#github">گیت‌هاب</a>
-    </div>
+    <a href="#" class="brand-wrap">
+      <img src="logo.svg" alt="Parvan Logo" class="brand-logo-img" />
+      <span class="brand-title">ParvanLang</span>
+    </a>
+    <nav class="nav-items">
+      <a href="#features">معماری و قابلیت‌ها</a>
+      <a href="#quickstart">کد نمونه</a>
+      <a href="https://github.com/alihasanifard-web/parvan-lang" target="_blank">گیت‌هاب رسمی</a>
+    </nav>
   </header>
 
-  <div class="hero">
-    <img src="logo.svg" alt="Parvan Brand Symbol" style="width: 170px; height: 170px; margin-bottom: 24px; filter: drop-shadow(0 0 35px rgba(56,189,248,0.55));" />
-    <h1>زبان برنامه‌نویسی پروان (ParvanLang)</h1>
-    <p>زبان برنامه‌نویسی فوق‌العاده سریع، دوزبانه (فارسی و انگلیسی)، چندپارادایمی و مستقل توسعه‌یافته با زبان قدرتمند Rust همراه با ماشین مجازی بایت‌کد و پایگاه داده توکار.</p>
-    <div class="btn-group">
-      <a href="#quickstart" class="btn btn-primary">شروع یادگیری</a>
-      <a href="https://github.com/alihasanifard-web/parvan-lang" target="_blank" class="btn btn-secondary">مخزن در گیت‌هاب</a>
+  <!-- Hero Section -->
+  <section class="hero-container">
+    <div class="badge-pill">
+      <span class="pulse-dot"></span>
+      <span>نسخه رسمی ۲.۶.۰ — Grand Standalone & LSP Ecosystem</span>
     </div>
-  </div>
 
-  <div class="container" id="features">
-    <div class="grid">
-      <div class="card">
-        <h3>⚡ ماشین مجازی بایت‌کد (Stack VM)</h3>
-        <p>سرعت مافوق صوت با کامپایل مستقیم کدهای AST به اوپ‌کدهای بایت‌کد و اجرای شتاب‌یافته روی استک ماشین مجازی.</p>
-        <pre>parvan --vm script.prv</pre>
+    <div class="hero-logo-box">
+      <img src="logo.svg" alt="Parvan Insinia" />
+    </div>
+
+    <h1 class="hero-title">مهندسی زبان مدرن؛<br>سرعت راست، ظرافت دوزبانه.</h1>
+    <p class="hero-desc">
+      زبان برنامه‌نویسی پیشرفته، دوگانه (مفسر درختی + کامپایلر بایت‌کد و ماشین مجازی)، بدون GC، با پایگاه داده توکار و تولید خروجی‌های باینری مستقل ویندوز بدون وابستگی خارجی.
+    </p>
+
+    <div class="cta-cluster">
+      <a href="https://github.com/alihasanifard-web/parvan-lang" target="_blank" class="btn-main btn-glow">
+        <span>دریافت از گیت‌هاب</span>
+        <span>⚡</span>
+      </a>
+      <a href="#quickstart" class="btn-main btn-ghost">
+        <span>مشاهده نمونه کدها</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Live Code Terminal Showcase -->
+  <section class="terminal-section" id="quickstart">
+    <div class="terminal-window">
+      <div class="terminal-header">
+        <div class="terminal-dots">
+          <div class="terminal-dot dot-red"></div>
+          <div class="terminal-dot dot-yellow"></div>
+          <div class="terminal-dot dot-green"></div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:0.85rem; color:#64748b;">
+          app.prv — ParvanLang v2.6.0
+        </div>
+        <div></div>
       </div>
-
-      <div class="card">
-        <h3>🏛️ شیءگرایی و ساختارها (Structs & Methods)</h3>
-        <p>تعریف ساختارها با فیلدها و متدها، و اتصال خودکار اشاره‌گر <code>self</code> یا <code>این</code> به دو زبان فارسی و انگلیسی.</p>
-        <pre>struct User {
-    name, score,
-    fn info() { return self.name; }
-}</pre>
-      </div>
-
-      <div class="card">
-        <h3>🗄️ پایگاه داده و میکروسرور وب توکار</h3>
-        <p>توابع بومی <code>db_open</code>، <code>db_exec</code> و شنود درخواست‌های وب شبکه با <code>http_listen</code> بدون نیاز به کتابخانه خارجی.</p>
-        <pre>let db = db_open("data.db");
-db_exec(db, "CREATE TABLE users");</pre>
-      </div>
-
-      <div class="card">
-        <h3>📦 بیلد اجرایی مستقل (Standalone Binary)</h3>
-        <p>امکان ساخت فایل <code>.exe</code> مستقل از کدهای منبع پروان بدون نیاز به نصب هیچ مفسری روی سیستم مشتری.</p>
-        <pre>parvan build main.prv -o app.exe</pre>
+      <div class="terminal-body">
+        <span class="code-comment">// ساختار شیءگرا، متدها و تقویم بومی هجری شمسی</span><br>
+        <span class="code-keyword">struct</span> <span class="code-fn">Developer</span> {<br>
+        &nbsp;&nbsp;name, role, skills,<br>
+        &nbsp;&nbsp;<span class="code-keyword">fn</span> <span class="code-fn">introduce</span>() {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">let</span> today = <span class="code-fn">to_jalali</span>(<span class="code-num">2026</span>, <span class="code-num">10</span>, <span class="code-num">23</span>);<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">return</span> <span class="code-string">"توسعه‌دهنده: {self.name} | تاریخ: {today}"</span>;<br>
+        &nbsp;&nbsp;}<br>
+        }<br><br>
+        <span class="code-keyword">let</span> dev = <span class="code-fn">Developer</span>(<span class="code-string">"علی حسنی‌فرد"</span>, <span class="code-string">"معمار سیستم"</span>, [<span class="code-string">"Rust"</span>, <span class="code-string">"Compiler"</span>]);<br>
+        <span class="code-fn">println</span>(dev.<span class="code-fn">introduce</span>());
       </div>
     </div>
-  </div>
+  </section>
 
+  <!-- Features Bento Grid -->
+  <section class="features-container" id="features">
+    <div class="section-headline">
+      <h2>چهار ستون قدرت اکوسیستم پروان</h2>
+      <p>طراحی‌شده با دقت صنعتی و عملکرد مافوق صوت با زبان راست</p>
+    </div>
+
+    <div class="bento-grid">
+      <!-- Card 1 -->
+      <div class="bento-card">
+        <div>
+          <div class="card-icon">⚡</div>
+          <h3 class="card-title">ماشین مجازی استک (Bytecode VM)</h3>
+          <p class="card-desc">کامپایل سریع درخت نحو به بایت‌کدهای کمانی و اجرای مستقیم توابع کاربر و اپل‌های ریاضیاتی با اوپ‌کد <code>OpCall</code> روی استک پردازشی بدون اورهد.</p>
+        </div>
+        <div class="card-snippet">$ parvan --vm benchmark.prv</div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="bento-card">
+        <div>
+          <div class="card-icon">📦</div>
+          <h3 class="card-title">باینری‌ساز مستقل (Native Standalone)</h3>
+          <p class="card-desc">تولید مستقیم فایل‌های تک‌فایل <code>.exe</code> از سورس‌کدهای پروژه بدون نیاز به نصب پروان یا هیچ ابزار جانبی دیگر روی سیستم مقصد.</p>
+        </div>
+        <div class="card-snippet">$ parvan build main.prv -o app.exe</div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="bento-card">
+        <div>
+          <div class="card-icon">🔮</div>
+          <h3 class="card-title">پروتکل زنده ادیتورها (LSP Engine)</h3>
+          <p class="card-desc">سرور زبان داخلی برای ارتباط لحظه‌ای با افزونه‌های VS Code و VSCodium از طریق JSON-RPC استاندارد جهت خطایابی و هایلایت حین تایپ.</p>
+        </div>
+        <div class="card-snippet">$ parvan --lsp</div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="bento-card">
+        <div>
+          <div class="card-icon">🏛️</div>
+          <h3 class="card-title">شیءگرایی و نحو دوزبانه</h3>
+          <p class="card-desc">پشتیبانی کامل و متقارن از کلمات کلیدی فارسی و انگلیسی (ساختار، تابع، این / struct, fn, self) به همراه درون‌یابی متغیرها (f-strings).</p>
+        </div>
+        <div class="card-snippet">let msg = "امتیاز: {score + 10}";</div>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="bento-card">
+        <div>
+          <div class="card-icon">🗄️</div>
+          <h3 class="card-title">پایگاه داده و سرور وب توکار</h3>
+          <p class="card-desc">ماژول ذخیره‌سازی داده رابطه‌ای بدون نیاز به درایور خارجی (<code>db_open</code>) و وب‌سرور سوکتی بهینه‌سازی‌شده برای پاسخگویی به درخواست‌های HTTP.</p>
+        </div>
+        <div class="card-snippet">http_listen(8080, handler);</div>
+      </div>
+
+      <!-- Card 6 -->
+      <div class="bento-card">
+        <div>
+          <div class="card-icon">🔐</div>
+          <h3 class="card-title">ماژول ریاضی، رمزنگاری و تقویم جلالی</h3>
+          <p class="card-desc">کتابخانه غنی شامل توابع مثلثاتی پیشرفته، توابع هشینگ <code>sha256</code> و <code>md5</code>، تبدیل دقیق تاریخ‌های میلادی به شمسی و موتور تست خودکار.</p>
+        </div>
+        <div class="card-snippet">let hash = sha256("parvan");</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
   <footer>
-    <p>توسعه‌یافته توسط تیم پروان: علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی</p>
-    <p style="margin-top: 8px;">تحت مجوز رسمی MIT License</p>
+    <div class="footer-team">
+      توسعه‌یافته با افتخار توسط تیم پروان: علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی
+    </div>
+    <div style="margin-top: 6px;">
+      تحت مجوز رسمی MIT License | Parvan Programming Language Ecosystem &copy; 2026
+    </div>
   </footer>
+
 </body>
 </html>
