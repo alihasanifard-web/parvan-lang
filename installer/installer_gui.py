@@ -1,0 +1,212 @@
+import os
+import sys
+import shutil
+import winreg
+import subprocess
+import tkinter as tk
+from tkinter import ttk, messagebox
+
+VERSION = "2.5.0"
+APP_NAME = "Parvan Programming Language"
+APP_NAME_FA = "زبان برنامه‌نویسی پروان"
+
+DEFAULT_INSTALL_DIR = os.path.join(os.environ.get("LOCALAPPDATA", r"C:\Users\Default\AppData\Local"), "Programs", "ParvanLang")
+
+def add_to_user_path(new_dir):
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment", 0, winreg.KEY_ALL_ACCESS) as key:
+            try:
+                cur_path, _ = winreg.QueryValueEx(key, "Path")
+            except FileNotFoundError:
+                cur_path = ""
+
+            paths = [p for p in cur_path.split(";") if p.strip()]
+            if new_dir not in paths:
+                paths.append(new_dir)
+                new_path_str = ";".join(paths)
+                winreg.SetValueEx(key, "Path", 0, winreg.REG_EXPAND_SZ, new_path_str)
+                # Broadcast environment change
+                try:
+                    import ctypes
+                    HWND_BROADCAST = 0xFFFF
+                    WM_SETTINGCHANGE = 0x001A
+                    SMTO_ABORTIFHUNG = 0x0002
+                    result = ctypes.c_long()
+                    ctypes.windll.user32.SendMessageTimeoutW(
+                        HWND_BROADCAST, WM_SETTINGCHANGE, 0, "Environment",
+                        SMTO_ABORTIFHUNG, 5000, ctypes.byref(result)
+                    )
+                except Exception:
+                    pass
+    except Exception as e:
+        print("Path update error:", e)
+
+def register_file_association(exe_path):
+    try:
+        # Register .prv file extension
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\.prv") as key:
+            winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "ParvanLang.Script")
+
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\ParvanLang.Script") as key:
+            winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "Parvan Language Source File")
+
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\ParvanLang.Script\DefaultIcon") as key:
+            winreg.SetValueEx(key, "", 0, winreg.REG_SZ, f'"{exe_path}",0')
+
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\ParvanLang.Script\shell\open\command") as key:
+            winreg.SetValueEx(key, "", 0, winreg.REG_SZ, f'"{exe_path}" "%1"')
+    except Exception as e:
+        print("File association error:", e)
+
+def register_uninstaller(install_dir, exe_path):
+    try:
+        uninstall_cmd = os.path.join(install_dir, "uninstall.cmd")
+        with open(uninstall_cmd, "w", encoding="utf-8") as f:
+            f.write(f'''@echo off
+title Uninstall ParvanLang
+echo Removing Parvan Programming Language...
+reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\ParvanLang" /f >nul 2>&1
+reg delete "HKCU\\Software\\Classes\\.prv" /f >nul 2>&1
+reg delete "HKCU\\Software\\Classes\\ParvanLang.Script" /f >nul 2>&1
+del "%USERPROFILE%\\Desktop\\Parvan REPL.lnk" >nul 2>&1
+rmdir /s /q "{install_dir}"
+echo ParvanLang was removed successfully.
+pause
+''')
+
+        key_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\ParvanLang"
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+            winreg.SetValueEx(key, "DisplayName", 0, winreg.REG_SZ, f"{APP_NAME_FA} (ParvanLang v{VERSION})")
+            winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, VERSION)
+            winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "Parvan Team (Ali Hasanifard, Ehsan Fazlinejad, Amirmehdi Shahbazi)")
+            winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, install_dir)
+            winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, exe_path)
+            winreg.SetValueEx(key, "UninstallString", 0, winreg.REG_SZ, f'"{uninstall_cmd}"')
+    except Exception as e:
+        print("Uninstaller registry error:", e)
+
+
+class InstallerGUI(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title(f"نصب {APP_NAME_FA} - نسخه {VERSION}")
+        self.geometry("620x420")
+        self.resizable(False, False)
+        self.configure(bg="#0f172a")
+
+        # Center window
+        self.update_idletasks()
+        w = self.winfo_width()
+        h = self.winfo_height()
+        x = (self.winfo_screenwidth() // 2) - (w // 2)
+        y = (self.winfo_screenheight() // 2) - (h // 2)
+        self.geometry(f"{w}x{h}+{x}+{y}")
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Header banner
+        header = tk.Frame(self, bg="#1e293b", height=80)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+
+        title_lbl = tk.Label(header, text="🦋 زبان برنامه‌نویسی پروان (ParvanLang)", font=("Vazirmatn", 16, "bold"), fg="#38bdf8", bg="#1e293b")
+        title_lbl.pack(pady=8)
+
+        sub_lbl = tk.Label(header, text=f"نصاب رسمی و جامع نسخه {VERSION} (Enterprise Edition)", font=("Vazirmatn", 10), fg="#94a3b8", bg="#1e293b")
+        sub_lbl.pack()
+
+        # Body Frame
+        body = tk.Frame(self, bg="#0f172a", padx=30, pady=20)
+        body.pack(fill="both", expand=True)
+
+        desc_text = (
+            "به نصاب رسمی زبان برنامه‌نویسی پروان خوش آمدید!\n"
+            "این برنامه به صورت خودکار باینری مفسر و ماشین مجازی بایت‌کد را نصب کرده، "
+            "مسیر را در PATH ویندوز ثبت می‌نماید تا دستور parvan در هر ترمینالی در دسترس باشد."
+        )
+        desc_lbl = tk.Label(body, text=desc_text, font=("Vazirmatn", 10), fg="#f8fafc", bg="#0f172a", justify="right", wraplength=550)
+        desc_lbl.pack(anchor="e", pady=10)
+
+        # Options checkbuttons
+        self.opt_path = tk.BooleanVar(value=True)
+        self.opt_assoc = tk.BooleanVar(value=True)
+
+        cb1 = tk.Checkbutton(body, text="افزودن دستور parvan به متغیرهای محیطی سیستم (PATH)", variable=self.opt_path,
+                             font=("Vazirmatn", 10), fg="#38bdf8", bg="#0f172a", selectcolor="#1e293b", activebackground="#0f172a", activeforeground="#38bdf8")
+        cb1.pack(anchor="e", pady=4)
+
+        cb2 = tk.Checkbutton(body, text="اتصال پسوند فایل‌های .prv به اجرای مستقیم با پروان", variable=self.opt_assoc,
+                             font=("Vazirmatn", 10), fg="#38bdf8", bg="#0f172a", selectcolor="#1e293b", activebackground="#0f172a", activeforeground="#38bdf8")
+        cb2.pack(anchor="e", pady=4)
+
+        # Progress bar
+        self.progress = ttk.Progressbar(body, orient="horizontal", length=550, mode="determinate")
+        self.progress.pack(pady=20)
+
+        self.status_lbl = tk.Label(body, text="آماده جهت آغاز فرآیند نصب...", font=("Vazirmatn", 9), fg="#94a3b8", bg="#0f172a")
+        self.status_lbl.pack()
+
+        # Footer Buttons
+        footer = tk.Frame(self, bg="#1e293b", height=60, padx=20)
+        footer.pack(fill="x", side="bottom")
+
+        self.install_btn = tk.Button(footer, text="شروع نصب (Install)", font=("Vazirmatn", 11, "bold"),
+                                     bg="#38bdf8", fg="#0f172a", activebackground="#7dd3fc", activeforeground="#0f172a",
+                                     padx=20, pady=4, relief="flat", cursor="hand2", command=self.start_install)
+        self.install_btn.pack(side="right", pady=12)
+
+        self.close_btn = tk.Button(footer, text="انصراف (Cancel)", font=("Vazirmatn", 10),
+                                   bg="#334155", fg="#f8fafc", activebackground="#475569", activeforeground="#f8fafc",
+                                   padx=15, pady=4, relief="flat", cursor="hand2", command=self.destroy)
+        self.close_btn.pack(side="left", pady=12)
+
+    def start_install(self):
+        self.install_btn.config(state="disabled")
+        self.close_btn.config(state="disabled")
+
+        src_exe = r"C:\Users\V I S I O N\Desktop\parvan.exe"
+        dest_dir = DEFAULT_INSTALL_DIR
+        dest_exe = os.path.join(dest_dir, "parvan.exe")
+
+        try:
+            self.status_lbl.config(text="در حال آماده‌سازی پوشه مقصد...")
+            self.progress["value"] = 20
+            self.update()
+
+            os.makedirs(dest_dir, exist_ok=True)
+            self.status_lbl.config(text="در حال کپی باینری موتور اجرایی پروان...")
+            self.progress["value"] = 50
+            self.update()
+
+            if os.path.exists(src_exe):
+                shutil.copy2(src_exe, dest_exe)
+
+            if self.opt_path.get():
+                self.status_lbl.config(text="در حال ثبت در PATH ویندوز...")
+                self.progress["value"] = 70
+                self.update()
+                add_to_user_path(dest_dir)
+
+            if self.opt_assoc.get():
+                self.status_lbl.config(text="در حال ثبت پسوند .prv در رجیستری...")
+                self.progress["value"] = 85
+                self.update()
+                register_file_association(dest_exe)
+
+            register_uninstaller(dest_dir, dest_exe)
+
+            self.progress["value"] = 100
+            self.status_lbl.config(text="نصب با موفقیت کامل شد!", fg="#4ade80")
+            self.update()
+
+            messagebox.showinfo("نصب موفق", f"زبان برنامه‌نویسی پروان با موفقیت در مسیر زیر نصب شد:\n{dest_dir}\n\nاکنون می‌توانید در هر ترمینال دستور parvan را اجرا کنید!")
+            self.destroy()
+        except Exception as e:
+            messagebox.showerror("خطای نصب", f"خطایی در هنگام نصب رخ داد:\n{e}")
+            self.install_btn.config(state="normal")
+            self.close_btn.config(state="normal")
+
+if __name__ == "__main__":
+    app = InstallerGUI()
+    app.mainloop()

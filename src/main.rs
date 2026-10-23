@@ -11,7 +11,7 @@ use std::io::{self, Write};
 use std::process;
 use std::rc::Rc;
 
-const VERSION: &str = "2.4.0 (Enterprise Industrial Edition)";
+const VERSION: &str = "2.5.0 (Enterprise Ultimate Flagship)";
 
 #[cfg(target_os = "windows")]
 fn set_windows_console_font() {

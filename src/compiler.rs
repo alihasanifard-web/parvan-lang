@@ -145,6 +145,17 @@ impl Compiler {
                 self.emit(Opcode::OpNil);
                 Ok(())
             }
+            Expr::Function { params, body, .. } => {
+                let func_obj = Object::Function {
+                    params: params.clone(),
+                    body: body.clone(),
+                    env: std::rc::Rc::new(std::cell::RefCell::new(crate::object::Environment::new())),
+                };
+                let const_idx = self.add_constant(func_obj);
+                self.emit(Opcode::OpConstant);
+                self.emit_u16(const_idx);
+                Ok(())
+            }
             Expr::Ident(name, tok) => {
                 let idx_opt = self.symbol_table.get(name).copied();
                 if let Some(idx) = idx_opt {

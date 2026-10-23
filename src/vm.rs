@@ -146,6 +146,21 @@ impl Vm {
                             let result = builtin(args)?;
                             self.push(result)?;
                         }
+                        Object::Function { params, body, env } => {
+                            if params.len() != args.len() {
+                                return Err(format!("تعداد آرگومان نامعتبر: انتظار {} می‌رفت اما {} ارسال شد", params.len(), args.len()));
+                            }
+                            let func_env = std::rc::Rc::new(std::cell::RefCell::new(crate::object::Environment::new_enclosed(env)));
+                            for (p, a) in params.iter().zip(args.into_iter()) {
+                                func_env.borrow_mut().set(p.clone(), a, false);
+                            }
+                            let res = crate::evaluator::eval_block_statement(&body, func_env)?;
+                            if let Object::ReturnValue(v) = res {
+                                self.push(*v)?;
+                            } else {
+                                self.push(res)?;
+                            }
+                        }
                         other => return Err(format!("Callable object of type '{}' not yet supported on VM", other.type_name())),
                     }
                 }

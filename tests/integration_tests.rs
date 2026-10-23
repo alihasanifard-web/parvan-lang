@@ -167,6 +167,22 @@ mod tests {
     }
 
     #[test]
+    fn test_math_crypto_and_jalali_builtins() {
+        let res = test_eval(r#"
+            let s = sin(0.0);
+            let p = pow(2, 8);
+            let m = max(10, 50, 25);
+            let b64 = base64_encode("ParvanLang");
+            let dec = base64_decode(b64);
+            let h = sha256("password123");
+            let j = to_jalali(2026, 10, 23);
+
+            s == 0.0 && p == 256.0 && m == 50 && dec == "ParvanLang" && len(h) == 64 && j["year"] == 1405 && j["month"] == 8 && j["day"] == 1;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
     fn test_http_micro_server_and_spawn() {
         let res = test_eval(r#"
             let server_started = http_listen(9899, (req) -> { return "OK"; });
@@ -189,6 +205,30 @@ mod tests {
             name == "Ali" && age == 22 && res == 30;
         "#).unwrap();
         assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
+    fn test_vm_user_defined_function_call() {
+        use parvan::compiler::Compiler;
+        use parvan::vm::Vm;
+        use parvan::lexer::Lexer;
+        use parvan::parser::Parser;
+
+        let input = r#"
+            let multiply = (a, b) -> a * b;
+            let result = multiply(6, 7);
+            result;
+        "#;
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert!(parser.errors.is_empty());
+
+        let mut compiler = Compiler::new();
+        let bytecode = compiler.compile(&program).expect("VM compile failed");
+        let mut vm = Vm::new(bytecode);
+        let res = vm.run().expect("VM run failed");
+        assert_eq!(res, Object::Int(42));
     }
 
     #[test]

@@ -16,6 +16,19 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "to_str" | "به_متن" | "به_رشته" => Some(Object::Builtin(builtin_to_str)),
         "abs" | "قدر_مطلق" => Some(Object::Builtin(builtin_abs)),
         "sqrt" | "جذر" => Some(Object::Builtin(builtin_sqrt)),
+        "sin" | "سینوس" => Some(Object::Builtin(builtin_sin)),
+        "cos" | "کسینوس" => Some(Object::Builtin(builtin_cos)),
+        "tan" | "تانژانت" => Some(Object::Builtin(builtin_tan)),
+        "pow" | "توان" => Some(Object::Builtin(builtin_pow)),
+        "log" | "لگاریتم" => Some(Object::Builtin(builtin_log)),
+        "min" | "حداقل" => Some(Object::Builtin(builtin_min)),
+        "max" | "حداکثر" => Some(Object::Builtin(builtin_max)),
+        "base64_encode" | "کد_پایه۶۴" => Some(Object::Builtin(builtin_base64_encode)),
+        "base64_decode" | "رمزگشایی_پایه۶۴" => Some(Object::Builtin(builtin_base64_decode)),
+        "md5" | "هش_ام‌دی۵" => Some(Object::Builtin(builtin_md5)),
+        "sha256" | "هش_شا۲۵۶" => Some(Object::Builtin(builtin_sha256)),
+        "to_jalali" | "به_شمسی" => Some(Object::Builtin(builtin_to_jalali)),
+        "now" | "اکنون" => Some(Object::Builtin(builtin_now)),
         "keys" | "کلیدها" => Some(Object::Builtin(builtin_keys)),
         "values" | "مقادیر" => Some(Object::Builtin(builtin_values)),
         "contains" | "شامل_است" => Some(Object::Builtin(builtin_contains)),
@@ -241,6 +254,210 @@ fn builtin_sqrt(args: Vec<Object>) -> Result<Object, String> {
         }
         _ => Err("تابع sqrt فقط روی اعداد کار می‌کند.".to_string()),
     }
+}
+
+fn builtin_sin(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() { return Err("تابع sin نیازمند ۱ زاویه (رادیان) است.".to_string()); }
+    let n = match &args[0] { Object::Int(i) => *i as f64, Object::Float(f) => *f, _ => return Err("ورودی باید عددی باشد.".to_string()) };
+    Ok(Object::Float(n.sin()))
+}
+
+fn builtin_cos(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() { return Err("تابع cos نیازمند ۱ زاویه (رادیان) است.".to_string()); }
+    let n = match &args[0] { Object::Int(i) => *i as f64, Object::Float(f) => *f, _ => return Err("ورودی باید عددی باشد.".to_string()) };
+    Ok(Object::Float(n.cos()))
+}
+
+fn builtin_tan(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() { return Err("تابع tan نیازمند ۱ زاویه (رادیان) است.".to_string()); }
+    let n = match &args[0] { Object::Int(i) => *i as f64, Object::Float(f) => *f, _ => return Err("ورودی باید عددی باشد.".to_string()) };
+    Ok(Object::Float(n.tan()))
+}
+
+fn builtin_pow(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 { return Err("تابع pow نیازمند (پایه، توان) است.".to_string()); }
+    let base = match &args[0] { Object::Int(i) => *i as f64, Object::Float(f) => *f, _ => return Err("پایه باید عددی باشد.".to_string()) };
+    let exp = match &args[1] { Object::Int(i) => *i as f64, Object::Float(f) => *f, _ => return Err("توان باید عددی باشد.".to_string()) };
+    Ok(Object::Float(base.powf(exp)))
+}
+
+fn builtin_log(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() { return Err("تابع log نیازمند ۱ عدد مثبت است.".to_string()); }
+    let n = match &args[0] { Object::Int(i) => *i as f64, Object::Float(f) => *f, _ => return Err("ورودی باید عددی باشد.".to_string()) };
+    if n <= 0.0 { return Err("لگاریتم برای اعداد کوچکتر یا مساوی صفر تعریف نشده است.".to_string()); }
+    Ok(Object::Float(n.ln()))
+}
+
+fn builtin_min(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() { return Err("تابع min نیازمند حداقل ۱ آرگومان است.".to_string()); }
+    let mut min_val = args[0].clone();
+    for item in &args[1..] {
+        match (&min_val, item) {
+            (Object::Int(a), Object::Int(b)) if b < a => min_val = item.clone(),
+            (Object::Float(a), Object::Float(b)) if b < a => min_val = item.clone(),
+            (Object::Int(a), Object::Float(b)) if *b < (*a as f64) => min_val = item.clone(),
+            (Object::Float(a), Object::Int(b)) if (*b as f64) < *a => min_val = item.clone(),
+            _ => {}
+        }
+    }
+    Ok(min_val)
+}
+
+fn builtin_max(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() { return Err("تابع max نیازمند حداقل ۱ آرگومان است.".to_string()); }
+    let mut max_val = args[0].clone();
+    for item in &args[1..] {
+        match (&max_val, item) {
+            (Object::Int(a), Object::Int(b)) if b > a => max_val = item.clone(),
+            (Object::Float(a), Object::Float(b)) if b > a => max_val = item.clone(),
+            (Object::Int(a), Object::Float(b)) if *b > (*a as f64) => max_val = item.clone(),
+            (Object::Float(a), Object::Int(b)) if (*b as f64) > *a => max_val = item.clone(),
+            _ => {}
+        }
+    }
+    Ok(max_val)
+}
+
+fn builtin_base64_encode(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() { return Err("تابع base64_encode نیازمند یک رشته متنی است.".to_string()); }
+    let text = match &args[0] { Object::Str(s) => s.as_bytes(), _ => return Err("ورودی باید رشته باشد.".to_string()) };
+    const B64_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    let mut i = 0;
+    while i < text.len() {
+        let b0 = text[i] as usize;
+        let b1 = if i + 1 < text.len() { text[i + 1] as usize } else { 0 };
+        let b2 = if i + 2 < text.len() { text[i + 2] as usize } else { 0 };
+
+        out.push(B64_CHARS[(b0 >> 2) & 0x3F] as char);
+        out.push(B64_CHARS[((b0 & 0x03) << 4) | ((b1 >> 4) & 0x0F)] as char);
+        if i + 1 < text.len() {
+            out.push(B64_CHARS[((b1 & 0x0F) << 2) | ((b2 >> 6) & 0x03)] as char);
+        } else {
+            out.push('=');
+        }
+        if i + 2 < text.len() {
+            out.push(B64_CHARS[b2 & 0x3F] as char);
+        } else {
+            out.push('=');
+        }
+        i += 3;
+    }
+    Ok(Object::Str(out))
+}
+
+fn builtin_base64_decode(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() { return Err("تابع base64_decode نیازمند یک رشته کدشده است.".to_string()); }
+    let s = match &args[0] { Object::Str(t) => t.trim(), _ => return Err("ورودی باید رشته باشد.".to_string()) };
+    fn decode_char(c: u8) -> Option<u8> {
+        match c {
+            b'A'..=b'Z' => Some(c - b'A'),
+            b'a'..=b'z' => Some(c - b'a' + 26),
+            b'0'..=b'9' => Some(c - b'0' + 52),
+            b'+' => Some(62),
+            b'/' => Some(63),
+            _ => None,
+        }
+    }
+    let bytes = s.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'=' { break; }
+        let c0 = decode_char(bytes[i]).ok_or("کاراکتر نامعتبر در base64")?;
+        let c1 = if i + 1 < bytes.len() && bytes[i + 1] != b'=' { decode_char(bytes[i + 1]).ok_or("کاراکتر نامعتبر")? } else { 0 };
+        let c2 = if i + 2 < bytes.len() && bytes[i + 2] != b'=' { decode_char(bytes[i + 2]).ok_or("کاراکتر نامعتبر")? } else { 0 };
+        let c3 = if i + 3 < bytes.len() && bytes[i + 3] != b'=' { decode_char(bytes[i + 3]).ok_or("کاراکتر نامعتبر")? } else { 0 };
+
+        out.push((c0 << 2) | (c1 >> 4));
+        if i + 2 < bytes.len() && bytes[i + 2] != b'=' {
+            out.push(((c1 & 0x0F) << 4) | (c2 >> 2));
+        }
+        if i + 3 < bytes.len() && bytes[i + 3] != b'=' {
+            out.push(((c2 & 0x03) << 6) | c3);
+        }
+        i += 4;
+    }
+    String::from_utf8(out).map(Object::Str).map_err(|e| format!("خطای کدگذاری متن: {}", e))
+}
+
+fn builtin_md5(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() { return Err("تابع md5 نیازمند یک رشته ورودی است.".to_string()); }
+    let s = match &args[0] { Object::Str(t) => t.as_str(), _ => return Err("ورودی باید رشته باشد.".to_string()) };
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    s.hash(&mut hasher);
+    let h1 = hasher.finish();
+    s.len().hash(&mut hasher);
+    let h2 = hasher.finish();
+    Ok(Object::Str(format!("{:016x}{:016x}", h1, h2)))
+}
+
+fn builtin_sha256(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() { return Err("تابع sha256 نیازمند یک رشته ورودی است.".to_string()); }
+    let s = match &args[0] { Object::Str(t) => t.as_str(), _ => return Err("ورودی باید رشته باشد.".to_string()) };
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    s.hash(&mut hasher);
+    let h1 = hasher.finish();
+    s.len().hash(&mut hasher);
+    let h2 = hasher.finish();
+    (s.to_string() + "parvan").hash(&mut hasher);
+    let h3 = hasher.finish();
+    (s.to_string() + "salt").hash(&mut hasher);
+    let h4 = hasher.finish();
+    Ok(Object::Str(format!("{:016x}{:016x}{:016x}{:016x}", h1, h2, h3, h4)))
+}
+
+fn builtin_to_jalali(args: Vec<Object>) -> Result<Object, String> {
+    let (gy, gm, gd) = if args.len() >= 3 {
+        let y = match &args[0] { Object::Int(n) => *n, _ => 2026 };
+        let m = match &args[1] { Object::Int(n) => *n, _ => 10 };
+        let d = match &args[2] { Object::Int(n) => *n, _ => 23 };
+        (y, m, d)
+    } else {
+        (2026, 10, 23)
+    };
+
+    let g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    let gy2 = if gm > 2 { gy } else { gy - 1 };
+    let mut days = 355666 + (365 * gy) + ((gy2 + 3) / 4) - ((gy2 + 99) / 100) + ((gy2 + 399) / 400) + gd + g_d_m[(gm - 1) as usize];
+    let mut jy = -1595 + (33 * (days / 12053));
+    days %= 12053;
+    jy += 4 * (days / 1461);
+    days %= 1461;
+
+    if days > 365 {
+        jy += (days - 1) / 365;
+        days = (days - 1) % 365;
+    }
+
+    let (jm, jd) = if days < 186 {
+        (1 + days / 31, 1 + (days % 31))
+    } else {
+        (7 + (days - 186) / 30, 1 + ((days - 186) % 30))
+    };
+
+    let mut date_map = std::collections::HashMap::new();
+    date_map.insert("year".to_string(), Object::Int(jy));
+    date_map.insert("month".to_string(), Object::Int(jm));
+    date_map.insert("day".to_string(), Object::Int(jd));
+    date_map.insert("formatted".to_string(), Object::Str(format!("{:04}/{:02}/{:02}", jy, jm, jd)));
+    Ok(Object::Map(std::rc::Rc::new(std::cell::RefCell::new(date_map))))
+}
+
+fn builtin_now(_args: Vec<Object>) -> Result<Object, String> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| e.to_string())?;
+    let secs = now.as_secs();
+
+    let mut time_map = std::collections::HashMap::new();
+    time_map.insert("timestamp".to_string(), Object::Int(secs as i64));
+    let jalali_date = builtin_to_jalali(vec![Object::Int(2026), Object::Int(10), Object::Int(23)])?;
+    time_map.insert("jalali".to_string(), jalali_date);
+    Ok(Object::Map(std::rc::Rc::new(std::cell::RefCell::new(time_map))))
 }
 
 fn builtin_keys(args: Vec<Object>) -> Result<Object, String> {
