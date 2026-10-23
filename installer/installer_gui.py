@@ -6,10 +6,10 @@ import subprocess
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-VERSION = "2.8.0"
+VERSION = "3.0.0"
 APP_NAME = "Parvan Programming Language"
 APP_NAME_FA = "زبان برنامه‌نویسی پروان"
-APP_SUBTITLE = "نسخه ۲.۸.۰ — نیتیو C-FFI، وب‌سوکت، تحلیل استاتیک Lint و باینری محافظت‌شده"
+APP_SUBTITLE = "نسخه ۳.۰.۰ — پلتفرم جامع سازمانی، همزمانی با کانال، رجکس و کشینگ با حافظه رم"
 
 DEFAULT_INSTALL_DIR = os.path.join(os.environ.get("LOCALAPPDATA", r"C:\Users\Default\AppData\Local"), "Programs", "ParvanLang")
 

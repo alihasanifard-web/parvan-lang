@@ -12,7 +12,7 @@ use std::io::{self, Write};
 use std::process;
 use std::rc::Rc;
 
-const VERSION: &str = "2.8.0 (Enterprise C-FFI, WebSockets, Obfuscation & Lint)";
+const VERSION: &str = "3.0.0 (Grand Enterprise Language Platform)";
 const MAGIC_MARKER: &[u8] = b"__PARVAN_PAYLOAD_V260_TAG__";
 
 

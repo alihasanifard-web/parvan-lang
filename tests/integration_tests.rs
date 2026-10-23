@@ -521,6 +521,28 @@ mod tests {
     }
 
     #[test]
+    fn test_channels_regex_and_ttl_cache() {
+        let res = test_eval(r#"
+            // 1. Test Channels
+            let ch = channel_create();
+            channel_send(ch, "packet_1");
+            channel_send(ch, "packet_2");
+            let r1 = channel_recv(ch);
+            let r2 = channel_recv(ch);
+
+            // 2. Test Regex Match & Replace
+            let email_match = regex_match("@", "test@parvan.org");
+            let clean_txt = regex_replace("bad", "good", "this is bad code");
+
+            // 3. Test In-Memory Cache
+            cache_set("user:101", "Ali", 3600);
+            let cached_user = cache_get("user:101");
+
+            r1 + "_" + r2 + "_" + email_match + "_" + clean_txt + "_" + cached_user;
+        "#).unwrap();
+        assert_eq!(res, Object::Str("packet_1_packet_2_true_this is good code_Ali".to_string()));
+    }
+    #[test]
     fn test_ffi_and_websocket_builtins() {
         let res = test_eval(r#"
             // Test C-FFI

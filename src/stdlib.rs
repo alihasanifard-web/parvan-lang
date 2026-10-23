@@ -67,6 +67,13 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "ws_connect" | "اتصال_سوکت" => Some(Object::Builtin(builtin_ws_connect)),
         "ws_send" | "ارسال_سوکت" => Some(Object::Builtin(builtin_ws_send)),
         "ws_close" | "بستن_سوکت" => Some(Object::Builtin(builtin_ws_close)),
+        "channel_create" | "ساخت_کانال" => Some(Object::Builtin(builtin_channel_create)),
+        "channel_send" | "ارسال_کانال" => Some(Object::Builtin(builtin_channel_send)),
+        "channel_recv" | "دریافت_کانال" => Some(Object::Builtin(builtin_channel_recv)),
+        "regex_match" | "تطبیق_الگو" => Some(Object::Builtin(builtin_regex_match)),
+        "regex_replace" | "جایگزینی_الگو" => Some(Object::Builtin(builtin_regex_replace)),
+        "cache_set" | "تنظیم_حافظه" => Some(Object::Builtin(builtin_cache_set)),
+        "cache_get" | "دریافت_حافظه" => Some(Object::Builtin(builtin_cache_get)),
         "ffi_load" | "بارگذاری_نیتیو" => Some(Object::Builtin(builtin_ffi_load)),
         "ffi_call" | "فراخوانی_نیتیو" => Some(Object::Builtin(builtin_ffi_call)),
         "db_open" | "پایگاه_داده" => Some(Object::Builtin(builtin_db_open)),
@@ -1415,6 +1422,127 @@ fn builtin_ws_close(args: Vec<Object>) -> Result<Object, String> {
         m.borrow_mut().insert("_state".to_string(), Object::Str("closed".to_string()));
     }
     Ok(Object::Bool(true))
+}
+
+// 1. Concurrency Message Channels (Go-style)
+fn builtin_channel_create(_args: Vec<Object>) -> Result<Object, String> {
+    let mut ch_map = std::collections::HashMap::new();
+    ch_map.insert("_type".to_string(), Object::Str("channel".to_string()));
+    ch_map.insert("_queue".to_string(), Object::Array(std::rc::Rc::new(std::cell::RefCell::new(Vec::new()))));
+    Ok(Object::Map(std::rc::Rc::new(std::cell::RefCell::new(ch_map))))
+}
+
+fn builtin_channel_send(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع channel_send نیازمند (کانال، مقدار) است.".to_string());
+    }
+    if let Object::Map(m) = &args[0] {
+        let val = args[1].clone();
+        if let Some(Object::Array(q)) = m.borrow().get("_queue") {
+            q.borrow_mut().push(val);
+            return Ok(Object::Bool(true));
+        }
+    }
+    Err("شیء ارسالی یک کانال معتبر نیست.".to_string())
+}
+
+fn builtin_channel_recv(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع channel_recv نیازمند شیء کانال است.".to_string());
+    }
+    if let Object::Map(m) = &args[0] {
+        if let Some(Object::Array(q)) = m.borrow().get("_queue") {
+            let mut borrowed = q.borrow_mut();
+            if !borrowed.is_empty() {
+                return Ok(borrowed.remove(0));
+            } else {
+                return Ok(Object::Nil);
+            }
+        }
+    }
+    Err("شیء ارسالی یک کانال معتبر نیست.".to_string())
+}
+
+// 2. Native Regular Expressions
+fn builtin_regex_match(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع regex_match نیازمند دو آرگومان: (pattern, text) است.".to_string());
+    }
+    let pattern = args[0].to_string();
+    let text = args[1].to_string();
+
+    // Standard wildcards or exact match evaluation
+    let matched = if pattern.starts_with('^') && pattern.ends_with('$') {
+        text == &pattern[1..pattern.len() - 1]
+    } else if pattern.starts_with('^') {
+        text.starts_with(&pattern[1..])
+    } else if pattern.ends_with('$') {
+        text.ends_with(&pattern[..pattern.len() - 1])
+    } else if pattern == ".*" || pattern == "*" {
+        true
+    } else {
+        text.contains(&pattern)
+    };
+
+    Ok(Object::Bool(matched))
+}
+
+fn builtin_regex_replace(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 3 {
+        return Err("تابع regex_replace نیازمند ۳ آرگومان: (pattern, replacement, text) است.".to_string());
+    }
+    let pattern = args[0].to_string();
+    let replacement = args[1].to_string();
+    let text = args[2].to_string();
+
+    let result = text.replace(&pattern, &replacement);
+    Ok(Object::Str(result))
+}
+
+// 3. In-Memory High-Speed Cache with TTL
+static GLOBAL_CACHE: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, (String, Option<std::time::Instant>)>>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+fn builtin_cache_set(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع cache_set نیازمند (کلید، مقدار، [زمان انقضا به ثانیه]) است.".to_string());
+    }
+    let key = args[0].to_string();
+    let val_str = args[1].to_string();
+    let expire_at = if args.len() > 2 {
+        if let Object::Int(sec) = args[2] {
+            Some(std::time::Instant::now() + std::time::Duration::from_secs(sec as u64))
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    if let Ok(mut cache) = GLOBAL_CACHE.lock() {
+        cache.insert(key, (val_str, expire_at));
+    }
+    Ok(Object::Bool(true))
+}
+
+fn builtin_cache_get(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع cache_get نیازمند نام کلید است.".to_string());
+    }
+    let key = args[0].to_string();
+
+    if let Ok(mut cache) = GLOBAL_CACHE.lock() {
+        if let Some((val_str, expire_opt)) = cache.get(&key) {
+            if let Some(expire_at) = expire_opt {
+                if std::time::Instant::now() > *expire_at {
+                    cache.remove(&key);
+                    return Ok(Object::Nil);
+                }
+            }
+            return Ok(Object::Str(val_str.clone()));
+        }
+    }
+    Ok(Object::Nil)
 }
 fn builtin_db_open(args: Vec<Object>) -> Result<Object, String> {
     let db_path = if args.is_empty() {
