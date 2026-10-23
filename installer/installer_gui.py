@@ -90,10 +90,10 @@ pause
 class InstallerGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(f"نصب {APP_NAME_FA} - نسخه {VERSION}")
-        self.geometry("620x460")
+        self.title(f"ParvanLang v{VERSION} Setup Wizard")
+        self.geometry("680x520")
         self.resizable(False, False)
-        self.configure(bg="#06080d")
+        self.configure(bg="#05070d")
 
         # Center window
         self.update_idletasks()
@@ -106,83 +106,133 @@ class InstallerGUI(tk.Tk):
         self.setup_ui()
 
     def setup_ui(self):
-        # Header banner with Logo
-        header = tk.Frame(self, bg="#0d111b", height=100)
+        # 1. LUXURY GLASS HEADER
+        header = tk.Frame(self, bg="#0a0e1a", height=110)
         header.pack(fill="x")
         header.pack_propagate(False)
 
-        logo_frame = tk.Frame(header, bg="#0d111b")
-        logo_frame.pack(pady=12)
+        # Header bottom border line (Cyan neon glow accent)
+        header_border = tk.Frame(self, bg="#1e293b", height=1)
+        header_border.pack(fill="x")
 
-        # Load and render logo image if present
+        logo_frame = tk.Frame(header, bg="#0a0e1a")
+        logo_frame.pack(fill="both", expand=True, padx=28)
+
+        # Load and render transparent logo image
         self.logo_img = None
         logo_path = os.path.join(getattr(sys, '_MEIPASS', os.path.dirname(__file__)), "setup_logo.png")
         if os.path.exists(logo_path):
             try:
                 from PIL import Image, ImageTk
-                raw_img = Image.open(logo_path).resize((70, 70), Image.Resampling.LANCZOS)
+                raw_img = Image.open(logo_path).resize((76, 76), Image.Resampling.LANCZOS)
                 self.logo_img = ImageTk.PhotoImage(raw_img)
-                lbl_icon = tk.Label(logo_frame, image=self.logo_img, bg="#0d111b")
-                lbl_icon.pack(side="right", padx=12)
-            except Exception as e:
+                lbl_icon = tk.Label(logo_frame, image=self.logo_img, bg="#0a0e1a")
+                lbl_icon.pack(side="right", padx=10, pady=16)
+            except Exception:
                 pass
 
-        text_box = tk.Frame(logo_frame, bg="#0d111b")
-        text_box.pack(side="left")
+        text_box = tk.Frame(logo_frame, bg="#0a0e1a")
+        text_box.pack(side="left", fill="y", pady=22)
 
-        title_lbl = tk.Label(text_box, text="🦋 زبان برنامه‌نویسی پروان (ParvanLang)", font=("Vazirmatn", 15, "bold"), fg="#38bdf8", bg="#0d111b")
-        title_lbl.pack(anchor="w")
+        # Badge pill at top of header
+        badge_frame = tk.Frame(text_box, bg="#111827", padx=8, pady=2)
+        badge_frame.pack(anchor="w")
+        tk.Label(badge_frame, text="● OFFICIAL PRODUCTION RELEASE", font=("Consolas", 8, "bold"), fg="#38bdf8", bg="#111827").pack()
 
-        sub_lbl = tk.Label(text_box, text=APP_SUBTITLE, font=("Vazirmatn", 9), fg="#94a3b8", bg="#0d111b")
-        sub_lbl.pack(anchor="w", pady=2)
+        title_lbl = tk.Label(text_box, text=f"{APP_NAME_FA} (ParvanLang)", font=("Vazirmatn", 16, "bold"), fg="#f8fafc", bg="#0a0e1a")
+        title_lbl.pack(anchor="w", pady=(4, 0))
 
-        # Body Frame
-        body = tk.Frame(self, bg="#0f172a", padx=30, pady=20)
+        sub_lbl = tk.Label(text_box, text=APP_SUBTITLE, font=("Vazirmatn", 8), fg="#94a3b8", bg="#0a0e1a")
+        sub_lbl.pack(anchor="w")
+
+        # 2. MAIN BODY (DARK OBSIDIAN / CYBERPUNK SURFACE)
+        body = tk.Frame(self, bg="#05070d", padx=32, pady=16)
         body.pack(fill="both", expand=True)
 
-        desc_text = (
-            "به نصاب رسمی زبان برنامه‌نویسی پروان خوش آمدید!\n"
-            "این برنامه به صورت خودکار باینری مفسر و ماشین مجازی بایت‌کد را نصب کرده، "
-            "مسیر را در PATH ویندوز ثبت می‌نماید تا دستور parvan در هر ترمینالی در دسترس باشد."
-        )
-        desc_lbl = tk.Label(body, text=desc_text, font=("Vazirmatn", 10), fg="#f8fafc", bg="#0f172a", justify="right", wraplength=550)
-        desc_lbl.pack(anchor="e", pady=10)
+        # Feature pills row
+        pills_frame = tk.Frame(body, bg="#05070d")
+        pills_frame.pack(fill="x", pady=(0, 14))
 
-        # Options checkbuttons
+        pills = [
+            ("⚡ Rust Native VM", "#38bdf8"),
+            ("📦 Standalone Builder", "#c084fc"),
+            ("🔮 LSP Protocol Server", "#34d399"),
+            ("🗄️ Embedded Database", "#f59e0b"),
+        ]
+        for tag, color in pills:
+            p_box = tk.Frame(pills_frame, bg="#0c1220", padx=10, pady=4, highlightthickness=1, highlightbackground="#1e293b")
+            p_box.pack(side="right", padx=4)
+            tk.Label(p_box, text=tag, font=("Vazirmatn", 8, "bold"), fg=color, bg="#0c1220").pack()
+
+        # Destination Folder Card
+        dest_card = tk.Frame(body, bg="#090d16", padx=16, pady=10, highlightthickness=1, highlightbackground="#1e293b")
+        dest_card.pack(fill="x", pady=6)
+
+        tk.Label(dest_card, text="مسیر نصب موتور اجرایی و ابزارهای پروان:", font=("Vazirmatn", 9), fg="#94a3b8", bg="#090d16").pack(anchor="e")
+        path_box = tk.Label(dest_card, text=DEFAULT_INSTALL_DIR, font=("Consolas", 9), fg="#38bdf8", bg="#05070d", padx=10, pady=4, anchor="w")
+        path_box.pack(fill="x", pady=(4, 0))
+
+        # Checkboxes Container Card
+        opt_card = tk.Frame(body, bg="#090d16", padx=16, pady=10, highlightthickness=1, highlightbackground="#1e293b")
+        opt_card.pack(fill="x", pady=8)
+
         self.opt_path = tk.BooleanVar(value=True)
         self.opt_assoc = tk.BooleanVar(value=True)
 
-        cb1 = tk.Checkbutton(body, text="افزودن دستور parvan به متغیرهای محیطی سیستم (PATH)", variable=self.opt_path,
-                             font=("Vazirmatn", 10), fg="#38bdf8", bg="#0f172a", selectcolor="#1e293b", activebackground="#0f172a", activeforeground="#38bdf8")
-        cb1.pack(anchor="e", pady=4)
+        cb1 = tk.Checkbutton(opt_card, text="افزودن دستور parvan به متغیرهای محیطی سیستم (PATH) جهت دسترسی در همه ترمینال‌ها",
+                             variable=self.opt_path, font=("Vazirmatn", 9), fg="#e2e8f0", bg="#090d16",
+                             selectcolor="#0284c7", activebackground="#090d16", activeforeground="#38bdf8")
+        cb1.pack(anchor="e", pady=3)
 
-        cb2 = tk.Checkbutton(body, text="اتصال پسوند فایل‌های .prv به اجرای مستقیم با پروان", variable=self.opt_assoc,
-                             font=("Vazirmatn", 10), fg="#38bdf8", bg="#0f172a", selectcolor="#1e293b", activebackground="#0f172a", activeforeground="#38bdf8")
-        cb2.pack(anchor="e", pady=4)
+        cb2 = tk.Checkbutton(opt_card, text="اتصال و رجیستر پسوند فایل‌های منبع .prv برای اجرای مستقیم با یک کلیک",
+                             variable=self.opt_assoc, font=("Vazirmatn", 9), fg="#e2e8f0", bg="#090d16",
+                             selectcolor="#0284c7", activebackground="#090d16", activeforeground="#38bdf8")
+        cb2.pack(anchor="e", pady=3)
 
-        # Progress bar
-        self.progress = ttk.Progressbar(body, orient="horizontal", length=550, mode="determinate")
-        self.progress.pack(pady=20)
+        # Custom Neon Style Progress Bar
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure("Cyber.Horizontal.TProgressbar",
+                        troughcolor="#090d16",
+                        background="#38bdf8",
+                        lightcolor="#38bdf8",
+                        darkcolor="#0284c7",
+                        bordercolor="#1e293b",
+                        thickness=8)
 
-        self.status_lbl = tk.Label(body, text="آماده جهت آغاز فرآیند نصب...", font=("Vazirmatn", 9), fg="#94a3b8", bg="#0f172a")
-        self.status_lbl.pack()
+        self.progress = ttk.Progressbar(body, orient="horizontal", style="Cyber.Horizontal.TProgressbar", mode="determinate")
+        self.progress.pack(fill="x", pady=(10, 4))
 
-        # Footer Buttons
-        footer = tk.Frame(self, bg="#1e293b", height=60, padx=20)
+        self.status_lbl = tk.Label(body, text="آماده استقرار و راه‌اندازی اکوسیستم پروان...", font=("Vazirmatn", 9), fg="#64748b", bg="#05070d")
+        self.status_lbl.pack(anchor="center")
+
+        # 3. MODERN ACTION FOOTER
+        footer_border = tk.Frame(self, bg="#1e293b", height=1)
+        footer_border.pack(fill="x", side="bottom")
+
+        footer = tk.Frame(self, bg="#080c16", height=68, padx=28)
         footer.pack(fill="x", side="bottom")
+        footer.pack_propagate(False)
 
-        self.install_btn = tk.Button(footer, text="شروع نصب (Install)", font=("Vazirmatn", 11, "bold"),
-                                     bg="#38bdf8", fg="#0f172a", activebackground="#7dd3fc", activeforeground="#0f172a",
-                                     padx=20, pady=4, relief="flat", cursor="hand2", command=self.start_install)
-        self.install_btn.pack(side="right", pady=12)
+        author_lbl = tk.Label(footer, text="Parvan Core Team © 2026", font=("Consolas", 8), fg="#475569", bg="#080c16")
+        author_lbl.pack(side="left", pady=22)
 
-        self.close_btn = tk.Button(footer, text="انصراف (Cancel)", font=("Vazirmatn", 10),
-                                   bg="#334155", fg="#f8fafc", activebackground="#475569", activeforeground="#f8fafc",
-                                   padx=15, pady=4, relief="flat", cursor="hand2", command=self.destroy)
-        self.close_btn.pack(side="left", pady=12)
+        btn_cluster = tk.Frame(footer, bg="#080c16")
+        btn_cluster.pack(side="right", pady=14)
+
+        self.close_btn = tk.Button(btn_cluster, text="انصراف", font=("Vazirmatn", 10),
+                                   bg="#111827", fg="#94a3b8", activebackground="#1f2937", activeforeground="#f8fafc",
+                                   padx=18, pady=5, relief="flat", borderwidth=1, highlightbackground="#334155",
+                                   cursor="hand2", command=self.destroy)
+        self.close_btn.pack(side="right", padx=8)
+
+        self.install_btn = tk.Button(btn_cluster, text="نصب هوشمند پروان (Install)", font=("Vazirmatn", 10, "bold"),
+                                     bg="#38bdf8", fg="#05070d", activebackground="#7dd3fc", activeforeground="#05070d",
+                                     padx=24, pady=5, relief="flat", cursor="hand2", command=self.start_install)
+        self.install_btn.pack(side="right")
 
     def start_install(self):
-        self.install_btn.config(state="disabled")
+        self.install_btn.config(state="disabled", bg="#1e293b", fg="#64748b")
         self.close_btn.config(state="disabled")
 
         src_exe = r"C:\Users\V I S I O N\Desktop\parvan.exe"
@@ -190,41 +240,45 @@ class InstallerGUI(tk.Tk):
         dest_exe = os.path.join(dest_dir, "parvan.exe")
 
         try:
-            self.status_lbl.config(text="در حال آماده‌سازی پوشه مقصد...")
-            self.progress["value"] = 20
+            self.status_lbl.config(text="در حال پیکربندی و آماده‌سازی مخزن برنامه...", fg="#38bdf8")
+            self.progress["value"] = 25
             self.update()
 
             os.makedirs(dest_dir, exist_ok=True)
-            self.status_lbl.config(text="در حال کپی باینری موتور اجرایی پروان...")
-            self.progress["value"] = 50
+            self.status_lbl.config(text="در حال استقرار باینری مفسر و ماشین مجازی بایت‌کد...", fg="#38bdf8")
+            self.progress["value"] = 55
             self.update()
 
             if os.path.exists(src_exe):
                 shutil.copy2(src_exe, dest_exe)
 
             if self.opt_path.get():
-                self.status_lbl.config(text="در حال ثبت در PATH ویندوز...")
-                self.progress["value"] = 70
+                self.status_lbl.config(text="در حال ثبت دستور parvan در PATH سیستم...", fg="#c084fc")
+                self.progress["value"] = 75
                 self.update()
                 add_to_user_path(dest_dir)
 
             if self.opt_assoc.get():
-                self.status_lbl.config(text="در حال ثبت پسوند .prv در رجیستری...")
-                self.progress["value"] = 85
+                self.status_lbl.config(text="در حال ثبت نوع فایل و پیوند پسوند prv. در رجیستری...", fg="#c084fc")
+                self.progress["value"] = 90
                 self.update()
                 register_file_association(dest_exe)
 
             register_uninstaller(dest_dir, dest_exe)
 
             self.progress["value"] = 100
-            self.status_lbl.config(text="نصب با موفقیت کامل شد!", fg="#4ade80")
+            self.status_lbl.config(text="✔ فرآیند نصب با موفقیت کامل شد!", fg="#34d399")
             self.update()
 
-            messagebox.showinfo("نصب موفق", f"زبان برنامه‌نویسی پروان با موفقیت در مسیر زیر نصب شد:\n{dest_dir}\n\nاکنون می‌توانید در هر ترمینال دستور parvan را اجرا کنید!")
+            messagebox.showinfo("نصب موفقیت‌آمیز",
+                                f"اکوسیستم زبان برنامه‌نویسی پروان با موفقیت در مسیر زیر مستقر گردید:\n\n"
+                                f"{dest_dir}\n\n"
+                                f"دستور 'parvan' اکنون در تمامی ترمینال‌ها (cmd، PowerShell و bash) در دسترس است.\n"
+                                f"فایل‌های با پسوند prv. نیز با یک کلیک اجرا می‌شوند.")
             self.destroy()
         except Exception as e:
-            messagebox.showerror("خطای نصب", f"خطایی در هنگام نصب رخ داد:\n{e}")
-            self.install_btn.config(state="normal")
+            messagebox.showerror("خطای نصب", f"خطایی در هنگام فرآیند نصب رخ داد:\n{e}")
+            self.install_btn.config(state="normal", bg="#38bdf8", fg="#05070d")
             self.close_btn.config(state="normal")
 
 if __name__ == "__main__":

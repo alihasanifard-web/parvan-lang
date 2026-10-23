@@ -208,16 +208,26 @@ fn run_file_vm(filename: &str) {
     }
 }
 
+fn print_welcome_banner() {
+    println!();
+    println!("  {}", "╔═══════════════════════════════════════════════════════════╗".bright_cyan());
+    println!("  {}   {}   {}", "║".bright_cyan(), "⚡ PARVAN PROGRAMMING LANGUAGE (پروان)".bright_white().bold(), "║".bright_cyan());
+    println!("  {}   {}                 {}", "║".bright_cyan(), format!("v{}  (Grand Architecture Edition)", VERSION).bright_yellow(), "║".bright_cyan());
+    println!("  {}", "╠═══════════════════════════════════════════════════════════╣".bright_cyan());
+    println!("  {}   {}   {}", "║".bright_cyan(), "• Stack VM • Native Compiler • Embedded DB • Jalali Engine".bright_black(), "║".bright_cyan());
+    println!("  {}   {}               {}", "║".bright_cyan(), "Architects: Ali Hasanifard, Ehsan Fazlinejad, Amirmehdi   ".bright_black(), "║".bright_cyan());
+    println!("  {}", "╚═══════════════════════════════════════════════════════════╝".bright_cyan());
+    println!();
+}
+
 fn print_help() {
-    println!();
-    println!("  {} {}", "⚡ ParvanLang".bright_cyan().bold(), format!("v{}", VERSION).bright_black());
-    println!("  {}  {}", "Parvan High-Performance Language".bright_white(), reshape_persian("زبان برنامه‌نویسی پیشرفته پروان").green());
-    println!("  {}  {}", "Core Team: Ali Hasanifard, Ehsan Fazlinejad, Amirmehdi Shahbazi".bright_black(), reshape_persian("تیم سازنده: علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی").bright_black());
-    println!();
+    print_welcome_banner();
     println!("  {} / {}", "Usage:".yellow().bold(), reshape_persian("نحوه استفاده:").yellow().bold());
     println!("    parvan                  Interactive Shell / {}", reshape_persian("ورود به محیط تعاملی پروان (REPL)"));
     println!("    parvan <file.prv>       Execute code file / {}", reshape_persian("اجرای فایل کد"));
     println!("    parvan --vm <file.prv>  Run via Bytecode Virtual Machine / {}", reshape_persian("اجرا روی ماشین مجازی بایت‌کد"));
+    println!("    parvan build <f> -o <e> Compile standalone executable / {}", reshape_persian("تولید باینری اگزه کاملاً مستقل"));
+    println!("    parvan --lsp            Language Server Protocol Daemon / {}", reshape_persian("اجرای سرور زنده ادیتورها"));
     println!("    parvan fmt [file.prv]   Format code files / {}", reshape_persian("مرتب‌سازی و فرمت خودکار فایل‌های کد"));
     println!("    parvan test             Run internal test suite / {}", reshape_persian("اجرای خودکار آزمون‌های پروژه"));
     println!("    parvan --init           Initialize Parvan project / {}", reshape_persian("ایجاد پروژه جدید پروان (Parvan.toml)"));
@@ -228,7 +238,13 @@ fn print_help() {
 }
 
 fn build_standalone(source_path: &str, out_path: &str) {
-    println!("\n  {} {}", "📦".cyan(), reshape_persian(&format!("در حال کامپایل و بسته‌بندی مستقل: {}", source_path)).bold());
+    println!();
+    println!("  {}", "╔═══════════════════════════════════════════════════════════╗".bright_cyan());
+    println!("  {}   {}   {}", "║".bright_cyan(), "📦 PARVAN NATIVE STANDALONE EXECUTABLE BUILDER      ".bright_white().bold(), "║".bright_cyan());
+    println!("  {}", "╚═══════════════════════════════════════════════════════════╝".bright_cyan());
+    println!("  {} {} {}", "⚡".bright_yellow(), "Target Source:".bright_white(), source_path.bright_cyan());
+    println!("  {} {} {}", "🎯".bright_green(), "Output Binary:".bright_white(), out_path.bright_cyan());
+    println!();
     let current_exe = match env::current_exe() {
         Ok(p) => p,
         Err(e) => {
@@ -288,8 +304,9 @@ fn build_standalone(source_path: &str, out_path: &str) {
     if let Err(e) = fs::write(out_path, exe_bytes) {
         eprintln!("{} خطای نوشتن باینری نهایی '{}': {}", "✖".red(), out_path, e);
     } else {
-        println!("  {} {}", "✔".green(), reshape_persian(&format!("فایل اجرایی مستقل با موفقیت ساخته شد: {}", out_path)).green().bold());
-        println!("  {} این فایل مستقل است و بدون نیاز به نصب پروان اجرا می‌شود.\n", "ℹ".blue());
+        println!("  {} {}", "✔".bright_green().bold(), reshape_persian(&format!("باینری مستقل با موفقیت بسته‌بندی و کامپایل شد: {}", out_path)).bright_green().bold());
+        println!("  {} {}", "ℹ".bright_cyan(), reshape_persian("این فایل کاملاً مستقل (Zero-Dependency) است و روی هر سیستم ویندوزی بدون نصب پروان اجرا می‌شود.").bright_white());
+        println!();
     }
 }
 
@@ -561,8 +578,7 @@ fn run_file(filename: &str) {
 }
 
 fn run_repl() {
-    println!();
-    println!("  {} {}", "⚡ ParvanLang".bright_cyan().bold(), format!("v{}", VERSION).bright_black());
+    print_welcome_banner();
     println!(
         "  {} {} | {}",
         "•".bright_green(),
