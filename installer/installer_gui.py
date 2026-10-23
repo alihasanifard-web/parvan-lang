@@ -91,9 +91,9 @@ class InstallerGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"نصب {APP_NAME_FA} - نسخه {VERSION}")
-        self.geometry("620x420")
+        self.geometry("620x460")
         self.resizable(False, False)
-        self.configure(bg="#0f172a")
+        self.configure(bg="#06080d")
 
         # Center window
         self.update_idletasks()
@@ -106,16 +106,35 @@ class InstallerGUI(tk.Tk):
         self.setup_ui()
 
     def setup_ui(self):
-        # Header banner
-        header = tk.Frame(self, bg="#1e293b", height=80)
+        # Header banner with Logo
+        header = tk.Frame(self, bg="#0d111b", height=100)
         header.pack(fill="x")
         header.pack_propagate(False)
 
-        title_lbl = tk.Label(header, text="🦋 زبان برنامه‌نویسی پروان (ParvanLang)", font=("Vazirmatn", 16, "bold"), fg="#38bdf8", bg="#1e293b")
-        title_lbl.pack(pady=8)
+        logo_frame = tk.Frame(header, bg="#0d111b")
+        logo_frame.pack(pady=12)
 
-        sub_lbl = tk.Label(header, text=APP_SUBTITLE, font=("Vazirmatn", 10), fg="#94a3b8", bg="#1e293b")
-        sub_lbl.pack()
+        # Load and render logo image if present
+        self.logo_img = None
+        logo_path = os.path.join(getattr(sys, '_MEIPASS', os.path.dirname(__file__)), "setup_logo.png")
+        if os.path.exists(logo_path):
+            try:
+                from PIL import Image, ImageTk
+                raw_img = Image.open(logo_path).resize((70, 70), Image.Resampling.LANCZOS)
+                self.logo_img = ImageTk.PhotoImage(raw_img)
+                lbl_icon = tk.Label(logo_frame, image=self.logo_img, bg="#0d111b")
+                lbl_icon.pack(side="right", padx=12)
+            except Exception as e:
+                pass
+
+        text_box = tk.Frame(logo_frame, bg="#0d111b")
+        text_box.pack(side="left")
+
+        title_lbl = tk.Label(text_box, text="🦋 زبان برنامه‌نویسی پروان (ParvanLang)", font=("Vazirmatn", 15, "bold"), fg="#38bdf8", bg="#0d111b")
+        title_lbl.pack(anchor="w")
+
+        sub_lbl = tk.Label(text_box, text=APP_SUBTITLE, font=("Vazirmatn", 9), fg="#94a3b8", bg="#0d111b")
+        sub_lbl.pack(anchor="w", pady=2)
 
         # Body Frame
         body = tk.Frame(self, bg="#0f172a", padx=30, pady=20)
