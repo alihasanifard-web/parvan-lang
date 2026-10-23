@@ -210,41 +210,28 @@ fn run_file_vm(filename: &str) {
 
 fn print_welcome_banner() {
     println!();
-    println!("  {}", "╔═══════════════════════════════════════════════════════════╗".bright_cyan());
-    println!("  {}   {}   {}", "║".bright_cyan(), "⚡ PARVAN PROGRAMMING LANGUAGE (پروان)".bright_white().bold(), "║".bright_cyan());
-    println!("  {}   {}                 {}", "║".bright_cyan(), format!("v{}  (Grand Architecture Edition)", VERSION).bright_yellow(), "║".bright_cyan());
-    println!("  {}", "╠═══════════════════════════════════════════════════════════╣".bright_cyan());
-    println!("  {}   {}   {}", "║".bright_cyan(), "• Stack VM • Native Compiler • Embedded DB • Jalali Engine".bright_black(), "║".bright_cyan());
-    println!("  {}   {}               {}", "║".bright_cyan(), "Architects: Ali Hasanifard, Ehsan Fazlinejad, Amirmehdi   ".bright_black(), "║".bright_cyan());
-    println!("  {}", "╚═══════════════════════════════════════════════════════════╝".bright_cyan());
+    println!("  {} {} {}", "⚡".bright_cyan(), "ParvanLang".bright_white().bold(), format!("v{}", VERSION).bright_black());
+    println!("  {} {}", "•".bright_cyan(), "Next-gen bilingual systems language powered by Rust & Bytecode VM".bright_black());
     println!();
 }
 
 fn print_help() {
     print_welcome_banner();
-    println!("  {} / {}", "Usage:".yellow().bold(), reshape_persian("نحوه استفاده:").yellow().bold());
-    println!("    parvan                  Interactive Shell / {}", reshape_persian("ورود به محیط تعاملی پروان (REPL)"));
-    println!("    parvan <file.prv>       Execute code file / {}", reshape_persian("اجرای فایل کد"));
-    println!("    parvan --vm <file.prv>  Run via Bytecode Virtual Machine / {}", reshape_persian("اجرا روی ماشین مجازی بایت‌کد"));
-    println!("    parvan build <f> -o <e> Compile standalone executable / {}", reshape_persian("تولید باینری اگزه کاملاً مستقل"));
-    println!("    parvan --lsp            Language Server Protocol Daemon / {}", reshape_persian("اجرای سرور زنده ادیتورها"));
-    println!("    parvan fmt [file.prv]   Format code files / {}", reshape_persian("مرتب‌سازی و فرمت خودکار فایل‌های کد"));
-    println!("    parvan test             Run internal test suite / {}", reshape_persian("اجرای خودکار آزمون‌های پروژه"));
-    println!("    parvan --init           Initialize Parvan project / {}", reshape_persian("ایجاد پروژه جدید پروان (Parvan.toml)"));
-    println!("    parvan --install <pkg>  Install remote package / {}", reshape_persian("نصب پکیج و کتابخانه جدید"));
-    println!("    parvan --version        Display version / {}", reshape_persian("نمایش نسخه"));
-    println!("    parvan --help           Show help / {}", reshape_persian("راهنمای دستورات"));
+    println!("  {}", "دستورات:".bright_white().bold());
+    println!("    {:26} {}", "parvan".bright_cyan(), "ورود به محیط تعاملی پروان (REPL)".bright_black());
+    println!("    {:26} {}", "parvan <file.prv>".bright_cyan(), "اجرای فایل کد با مفسر درختی".bright_black());
+    println!("    {:26} {}", "parvan --vm <file.prv>".bright_cyan(), "اجرای شتاب‌یافته روی ماشین مجازی بایت‌کد".bright_black());
+    println!("    {:26} {}", "parvan build <f> -o <e>".bright_cyan(), "تولید فایل اجرایی مستقل (.exe)".bright_black());
+    println!("    {:26} {}", "parvan --lsp".bright_cyan(), "اجرای سرور ادیتورها (Language Server)".bright_black());
+    println!("    {:26} {}", "parvan fmt [file]".bright_cyan(), "فرمت و مرتب‌سازی کدها".bright_black());
+    println!("    {:26} {}", "parvan test".bright_cyan(), "اجرای آزمون‌های پروژه".bright_black());
+    println!("    {:26} {}", "parvan --init".bright_cyan(), "ساخت پروژه جدید (Parvan.toml)".bright_black());
+    println!("    {:26} {}", "parvan --version".bright_cyan(), "نمایش نسخه جاری".bright_black());
     println!();
 }
 
 fn build_standalone(source_path: &str, out_path: &str) {
-    println!();
-    println!("  {}", "╔═══════════════════════════════════════════════════════════╗".bright_cyan());
-    println!("  {}   {}   {}", "║".bright_cyan(), "📦 PARVAN NATIVE STANDALONE EXECUTABLE BUILDER      ".bright_white().bold(), "║".bright_cyan());
-    println!("  {}", "╚═══════════════════════════════════════════════════════════╝".bright_cyan());
-    println!("  {} {} {}", "⚡".bright_yellow(), "Target Source:".bright_white(), source_path.bright_cyan());
-    println!("  {} {} {}", "🎯".bright_green(), "Output Binary:".bright_white(), out_path.bright_cyan());
-    println!();
+    println!("  {} {} {}", "Compiling".bright_green().bold(), source_path.bright_white(), format!("-> {}", out_path).bright_cyan());
     let current_exe = match env::current_exe() {
         Ok(p) => p,
         Err(e) => {
@@ -302,11 +289,9 @@ fn build_standalone(source_path: &str, out_path: &str) {
     exe_bytes.extend_from_slice(&marker_len_bytes);
 
     if let Err(e) = fs::write(out_path, exe_bytes) {
-        eprintln!("{} خطای نوشتن باینری نهایی '{}': {}", "✖".red(), out_path, e);
+        eprintln!("  {} Failed to write executable '{}': {}", "error:".red().bold(), out_path, e);
     } else {
-        println!("  {} {}", "✔".bright_green().bold(), reshape_persian(&format!("باینری مستقل با موفقیت بسته‌بندی و کامپایل شد: {}", out_path)).bright_green().bold());
-        println!("  {} {}", "ℹ".bright_cyan(), reshape_persian("این فایل کاملاً مستقل (Zero-Dependency) است و روی هر سیستم ویندوزی بدون نصب پروان اجرا می‌شود.").bright_white());
-        println!();
+        println!("  {} Standalone binary ready at {}", "Finished".bright_green().bold(), out_path.bright_white().bold());
     }
 }
 
@@ -578,13 +563,9 @@ fn run_file(filename: &str) {
 }
 
 fn run_repl() {
-    print_welcome_banner();
-    println!(
-        "  {} {} | {}",
-        "•".bright_green(),
-        "Ready - Type exit or خروج to quit".bright_white(),
-        reshape_persian("آماده اجرا - برای خروج خروج یا exit بنویسید").bright_black()
-    );
+    println!();
+    println!("  {} {} {}", "⚡".bright_cyan(), "ParvanLang".bright_white().bold(), format!("v{}", VERSION).bright_black());
+    println!("  {} {}", "•".bright_green(), "Ready. Type exit to quit.".bright_black());
     println!();
 
     let env = Rc::new(RefCell::new(Environment::new()));

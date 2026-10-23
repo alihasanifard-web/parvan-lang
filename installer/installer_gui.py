@@ -106,129 +106,127 @@ class InstallerGUI(tk.Tk):
         self.setup_ui()
 
     def setup_ui(self):
-        # 1. LUXURY GLASS HEADER
-        header = tk.Frame(self, bg="#0a0e1a", height=110)
+        # 1. SLEEK MINIMAL HEADER (DEEP OBSIDIAN #030407)
+        header = tk.Frame(self, bg="#030407", height=100)
         header.pack(fill="x")
         header.pack_propagate(False)
 
-        # Header bottom border line (Cyan neon glow accent)
-        header_border = tk.Frame(self, bg="#1e293b", height=1)
+        header_border = tk.Frame(self, bg="#111827", height=1)
         header_border.pack(fill="x")
 
-        logo_frame = tk.Frame(header, bg="#0a0e1a")
+        logo_frame = tk.Frame(header, bg="#030407")
         logo_frame.pack(fill="both", expand=True, padx=28)
 
-        # Load and render transparent logo image
+        # Load transparent logo
         self.logo_img = None
         logo_path = os.path.join(getattr(sys, '_MEIPASS', os.path.dirname(__file__)), "setup_logo.png")
         if os.path.exists(logo_path):
             try:
                 from PIL import Image, ImageTk
-                raw_img = Image.open(logo_path).resize((76, 76), Image.Resampling.LANCZOS)
+                raw_img = Image.open(logo_path).resize((68, 68), Image.Resampling.LANCZOS)
                 self.logo_img = ImageTk.PhotoImage(raw_img)
-                lbl_icon = tk.Label(logo_frame, image=self.logo_img, bg="#0a0e1a")
+                lbl_icon = tk.Label(logo_frame, image=self.logo_img, bg="#030407")
                 lbl_icon.pack(side="right", padx=10, pady=16)
             except Exception:
                 pass
 
-        text_box = tk.Frame(logo_frame, bg="#0a0e1a")
+        text_box = tk.Frame(logo_frame, bg="#030407")
         text_box.pack(side="left", fill="y", pady=22)
 
-        # Badge pill at top of header
-        badge_frame = tk.Frame(text_box, bg="#111827", padx=8, pady=2)
+        badge_frame = tk.Frame(text_box, bg="#080c14", padx=7, pady=2, highlightthickness=1, highlightbackground="#1e293b")
         badge_frame.pack(anchor="w")
-        tk.Label(badge_frame, text="● OFFICIAL PRODUCTION RELEASE", font=("Consolas", 8, "bold"), fg="#38bdf8", bg="#111827").pack()
+        tk.Label(badge_frame, text="PRODUCTION RELEASE", font=("Consolas", 8, "bold"), fg="#38bdf8", bg="#080c14").pack()
 
-        title_lbl = tk.Label(text_box, text=f"{APP_NAME_FA} (ParvanLang)", font=("Vazirmatn", 16, "bold"), fg="#f8fafc", bg="#0a0e1a")
+        title_lbl = tk.Label(text_box, text=f"{APP_NAME_FA} (ParvanLang)", font=("Vazirmatn", 15, "bold"), fg="#f8fafc", bg="#030407")
         title_lbl.pack(anchor="w", pady=(4, 0))
 
-        sub_lbl = tk.Label(text_box, text=APP_SUBTITLE, font=("Vazirmatn", 8), fg="#94a3b8", bg="#0a0e1a")
+        sub_lbl = tk.Label(text_box, text=APP_SUBTITLE, font=("Vazirmatn", 8), fg="#64748b", bg="#030407")
         sub_lbl.pack(anchor="w")
 
-        # 2. MAIN BODY (DARK OBSIDIAN / CYBERPUNK SURFACE)
-        body = tk.Frame(self, bg="#05070d", padx=32, pady=16)
+        # 2. MAIN BODY (DEEP PURE DARK #030407)
+        body = tk.Frame(self, bg="#030407", padx=32, pady=14)
         body.pack(fill="both", expand=True)
 
-        # Feature pills row
-        pills_frame = tk.Frame(body, bg="#05070d")
-        pills_frame.pack(fill="x", pady=(0, 14))
+        # Feature pills row (Deep minimal cards)
+        pills_frame = tk.Frame(body, bg="#030407")
+        pills_frame.pack(fill="x", pady=(0, 12))
 
         pills = [
             ("⚡ Rust Native VM", "#38bdf8"),
-            ("📦 Standalone Builder", "#c084fc"),
-            ("🔮 LSP Protocol Server", "#34d399"),
+            ("📦 Standalone Builder", "#a855f7"),
+            ("🔮 LSP Protocol Server", "#10b981"),
             ("🗄️ Embedded Database", "#f59e0b"),
         ]
         for tag, color in pills:
-            p_box = tk.Frame(pills_frame, bg="#0c1220", padx=10, pady=4, highlightthickness=1, highlightbackground="#1e293b")
-            p_box.pack(side="right", padx=4)
-            tk.Label(p_box, text=tag, font=("Vazirmatn", 8, "bold"), fg=color, bg="#0c1220").pack()
+            p_box = tk.Frame(pills_frame, bg="#070a12", padx=9, pady=3, highlightthickness=1, highlightbackground="#131b2e")
+            p_box.pack(side="right", padx=3)
+            tk.Label(p_box, text=tag, font=("Vazirmatn", 8), fg=color, bg="#070a12").pack()
 
-        # Destination Folder Card
-        dest_card = tk.Frame(body, bg="#090d16", padx=16, pady=10, highlightthickness=1, highlightbackground="#1e293b")
+        # Destination Folder Card (Subtle deep surface)
+        dest_card = tk.Frame(body, bg="#070a12", padx=16, pady=10, highlightthickness=1, highlightbackground="#131b2e")
         dest_card.pack(fill="x", pady=6)
 
-        tk.Label(dest_card, text="مسیر نصب موتور اجرایی و ابزارهای پروان:", font=("Vazirmatn", 9), fg="#94a3b8", bg="#090d16").pack(anchor="e")
-        path_box = tk.Label(dest_card, text=DEFAULT_INSTALL_DIR, font=("Consolas", 9), fg="#38bdf8", bg="#05070d", padx=10, pady=4, anchor="w")
+        tk.Label(dest_card, text="مسیر نصب موتور اجرایی و ابزارهای پروان:", font=("Vazirmatn", 9), fg="#64748b", bg="#070a12").pack(anchor="e")
+        path_box = tk.Label(dest_card, text=DEFAULT_INSTALL_DIR, font=("Consolas", 9), fg="#38bdf8", bg="#030407", padx=10, pady=4, anchor="w")
         path_box.pack(fill="x", pady=(4, 0))
 
-        # Checkboxes Container Card
-        opt_card = tk.Frame(body, bg="#090d16", padx=16, pady=10, highlightthickness=1, highlightbackground="#1e293b")
-        opt_card.pack(fill="x", pady=8)
+        # Checkboxes Container Card (Clean dark surface)
+        opt_card = tk.Frame(body, bg="#070a12", padx=16, pady=10, highlightthickness=1, highlightbackground="#131b2e")
+        opt_card.pack(fill="x", pady=6)
 
         self.opt_path = tk.BooleanVar(value=True)
         self.opt_assoc = tk.BooleanVar(value=True)
 
-        cb1 = tk.Checkbutton(opt_card, text="افزودن دستور parvan به متغیرهای محیطی سیستم (PATH) جهت دسترسی در همه ترمینال‌ها",
-                             variable=self.opt_path, font=("Vazirmatn", 9), fg="#e2e8f0", bg="#090d16",
-                             selectcolor="#0284c7", activebackground="#090d16", activeforeground="#38bdf8")
+        cb1 = tk.Checkbutton(opt_card, text="افزودن دستور parvan به متغیرهای محیطی سیستم (PATH)",
+                             variable=self.opt_path, font=("Vazirmatn", 9), fg="#cbd5e1", bg="#070a12",
+                             selectcolor="#030407", activebackground="#070a12", activeforeground="#38bdf8")
         cb1.pack(anchor="e", pady=3)
 
-        cb2 = tk.Checkbutton(opt_card, text="اتصال و رجیستر پسوند فایل‌های منبع .prv برای اجرای مستقیم با یک کلیک",
-                             variable=self.opt_assoc, font=("Vazirmatn", 9), fg="#e2e8f0", bg="#090d16",
-                             selectcolor="#0284c7", activebackground="#090d16", activeforeground="#38bdf8")
+        cb2 = tk.Checkbutton(opt_card, text="اتصال و رجیستر پسوند فایل‌های .prv برای اجرای مستقیم",
+                             variable=self.opt_assoc, font=("Vazirmatn", 9), fg="#cbd5e1", bg="#070a12",
+                             selectcolor="#030407", activebackground="#070a12", activeforeground="#38bdf8")
         cb2.pack(anchor="e", pady=3)
 
-        # Custom Neon Style Progress Bar
+        # Sleek Minimal Progress Bar
         style = ttk.Style()
         style.theme_use('clam')
         style.configure("Cyber.Horizontal.TProgressbar",
-                        troughcolor="#090d16",
-                        background="#38bdf8",
+                        troughcolor="#030407",
+                        background="#0284c7",
                         lightcolor="#38bdf8",
-                        darkcolor="#0284c7",
-                        bordercolor="#1e293b",
-                        thickness=8)
+                        darkcolor="#0369a1",
+                        bordercolor="#111827",
+                        thickness=6)
 
         self.progress = ttk.Progressbar(body, orient="horizontal", style="Cyber.Horizontal.TProgressbar", mode="determinate")
         self.progress.pack(fill="x", pady=(10, 4))
 
-        self.status_lbl = tk.Label(body, text="آماده استقرار و راه‌اندازی اکوسیستم پروان...", font=("Vazirmatn", 9), fg="#64748b", bg="#05070d")
+        self.status_lbl = tk.Label(body, text="آماده استقرار و راه‌اندازی اکوسیستم پروان...", font=("Vazirmatn", 9), fg="#475569", bg="#030407")
         self.status_lbl.pack(anchor="center")
 
-        # 3. MODERN ACTION FOOTER
-        footer_border = tk.Frame(self, bg="#1e293b", height=1)
+        # 3. MINIMAL ACTION FOOTER (PURE DARK)
+        footer_border = tk.Frame(self, bg="#111827", height=1)
         footer_border.pack(fill="x", side="bottom")
 
-        footer = tk.Frame(self, bg="#080c16", height=68, padx=28)
+        footer = tk.Frame(self, bg="#030407", height=66, padx=28)
         footer.pack(fill="x", side="bottom")
         footer.pack_propagate(False)
 
-        author_lbl = tk.Label(footer, text="Parvan Core Team © 2026", font=("Consolas", 8), fg="#475569", bg="#080c16")
+        author_lbl = tk.Label(footer, text="Parvan Core Team © 2026", font=("Consolas", 8), fg="#334155", bg="#030407")
         author_lbl.pack(side="left", pady=22)
 
-        btn_cluster = tk.Frame(footer, bg="#080c16")
+        btn_cluster = tk.Frame(footer, bg="#030407")
         btn_cluster.pack(side="right", pady=14)
 
         self.close_btn = tk.Button(btn_cluster, text="انصراف", font=("Vazirmatn", 10),
-                                   bg="#111827", fg="#94a3b8", activebackground="#1f2937", activeforeground="#f8fafc",
-                                   padx=18, pady=5, relief="flat", borderwidth=1, highlightbackground="#334155",
+                                   bg="#070a12", fg="#64748b", activebackground="#0f172a", activeforeground="#f8fafc",
+                                   padx=16, pady=4, relief="flat", borderwidth=1, highlightbackground="#1e293b",
                                    cursor="hand2", command=self.destroy)
         self.close_btn.pack(side="right", padx=8)
 
-        self.install_btn = tk.Button(btn_cluster, text="نصب هوشمند پروان (Install)", font=("Vazirmatn", 10, "bold"),
-                                     bg="#38bdf8", fg="#05070d", activebackground="#7dd3fc", activeforeground="#05070d",
-                                     padx=24, pady=5, relief="flat", cursor="hand2", command=self.start_install)
+        self.install_btn = tk.Button(btn_cluster, text="نصب پروان (Install)", font=("Vazirmatn", 10, "bold"),
+                                     bg="#0284c7", fg="#ffffff", activebackground="#38bdf8", activeforeground="#000000",
+                                     padx=22, pady=4, relief="flat", cursor="hand2", command=self.start_install)
         self.install_btn.pack(side="right")
 
     def start_install(self):
