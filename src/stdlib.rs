@@ -51,6 +51,8 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "exit" | "خروج" => Some(Object::Builtin(builtin_exit)),
         "http_get" | "دریافت_وب" => Some(Object::Builtin(builtin_http_get)),
         "http_post" | "ارسال_وب" => Some(Object::Builtin(builtin_http_post)),
+        "http_put" | "ویرایش_وب" => Some(Object::Builtin(builtin_http_put)),
+        "http_delete" | "حذف_وب" => Some(Object::Builtin(builtin_http_delete)),
         "alert" | "پیام_سیستم" => Some(Object::Builtin(builtin_alert)),
         "msgbox" | "جعبه_پیام" => Some(Object::Builtin(builtin_msgbox)),
         "random" | "تصادفی" => Some(Object::Builtin(builtin_random)),
@@ -808,7 +810,112 @@ fn builtin_http_post(args: Vec<Object>) -> Result<Object, String> {
     let mut response = String::new();
     stream.read_to_string(&mut response).map_err(|e| e.to_string())?;
 
-    let resp_body = if let Some(pos) = response.find("\r\n\r\n") {
+    let resp_body = if let Some(pos) = response.find("
+\n
+\n") {
+        &response[pos + 4..]
+    } else {
+        &response
+    };
+
+    Ok(Object::Str(resp_body.to_string()))
+}
+
+fn builtin_http_put(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع http_put حداقل ۲ آرگومان می‌پذیرد: (url, body).".to_string());
+    }
+    let url = match &args[0] {
+        Object::Str(u) => u.clone(),
+        _ => return Err("آدرس URL باید رشته باشد.".to_string()),
+    };
+    let body_str = args[1].to_string();
+
+    use std::io::{Read, Write};
+    use std::net::TcpStream;
+
+    let parsed = url.strip_prefix("http://").ok_or_else(|| "فقط پروتکل http:// پشتیبانی می‌شود.".to_string())?;
+    let mut parts = parsed.splitn(2, '/');
+    let host_port = parts.next().unwrap_or("");
+    let path = format!("/{}", parts.next().unwrap_or(""));
+
+    let host = if host_port.contains(':') {
+        host_port.to_string()
+    } else {
+        format!("{}:80", host_port)
+    };
+
+    let mut stream = TcpStream::connect(&host).map_err(|e| format!("خطای اتصال به سرور '{}': {}", host, e))?;
+    let request = format!(
+        "PUT {} HTTP/1.1
+\nHost: {}
+\nUser-Agent: ParvanLang/2.7
+\nContent-Type: application/json
+\nContent-Length: {}
+\nConnection: close
+\n
+\n{}",
+        path, host_port, body_str.len(), body_str
+    );
+
+    stream.write_all(request.as_bytes()).map_err(|e| e.to_string())?;
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).map_err(|e| e.to_string())?;
+
+    let resp_body = if let Some(pos) = response.find("
+\n
+\n") {
+        &response[pos + 4..]
+    } else {
+        &response
+    };
+
+    Ok(Object::Str(resp_body.to_string()))
+}
+
+fn builtin_http_delete(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع http_delete نیازمند ۱ آرگومان (url) است.".to_string());
+    }
+    let url = match &args[0] {
+        Object::Str(u) => u.clone(),
+        _ => return Err("آدرس URL باید رشته باشد.".to_string()),
+    };
+
+    use std::io::{Read, Write};
+    use std::net::TcpStream;
+
+    let parsed = url.strip_prefix("http://").ok_or_else(|| "فقط پروتکل http:// پشتیبانی می‌شود.".to_string())?;
+    let mut parts = parsed.splitn(2, '/');
+    let host_port = parts.next().unwrap_or("");
+    let path = format!("/{}", parts.next().unwrap_or(""));
+
+    let host = if host_port.contains(':') {
+        host_port.to_string()
+    } else {
+        format!("{}:80", host_port)
+    };
+
+    let mut stream = TcpStream::connect(&host).map_err(|e| format!("خطای اتصال به سرور '{}': {}", host, e))?;
+    let request = format!(
+        "DELETE {} HTTP/1.1
+\nHost: {}
+\nUser-Agent: ParvanLang/2.7
+\nConnection: close
+\n
+\n",
+        path, host_port
+    );
+
+    stream.write_all(request.as_bytes()).map_err(|e| e.to_string())?;
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).map_err(|e| e.to_string())?;
+
+    let resp_body = if let Some(pos) = response.find("
+\n
+\n") {
         &response[pos + 4..]
     } else {
         &response

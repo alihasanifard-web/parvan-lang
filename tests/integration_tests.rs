@@ -490,6 +490,25 @@ mod tests {
     }
 
     #[test]
+    fn test_http_advanced_methods_offline() {
+        let res = test_eval(r#"
+            let put_res = "init";
+            try {
+                http_put("http://127.0.0.1:9998/item", "{\"key\":\"val\"}");
+            } catch (e) {
+                put_res = "put_handled";
+            }
+            let del_res = "init";
+            try {
+                http_delete("http://127.0.0.1:9998/item");
+            } catch (e) {
+                del_res = "del_handled";
+            }
+            put_res + "_" + del_res;
+        "#).unwrap();
+        assert_eq!(res, Object::Str("put_handled_del_handled".to_string()));
+    }
+    #[test]
     fn test_http_get_builtin_offline() {
         let res = test_eval(r#"
             try {
