@@ -132,6 +132,14 @@ fn main() {
             init_project();
             return;
         }
+        if first_arg == "bench" || first_arg == "--bench" {
+            if args.len() > 2 {
+                run_benchmark(&args[2]);
+            } else {
+                eprintln!("{} استفاده: parvan bench <file.prv>", "✖".red());
+            }
+            return;
+        }
         if first_arg == "test" || first_arg == "--test" {
             run_project_tests();
             return;
@@ -361,6 +369,64 @@ fn run_lsp_server() {
     }
 }
 
+fn run_benchmark(filename: &str) {
+    println!("  {} {} {}", "Benchmarking".bright_green().bold(), filename.bright_white(), "(AST vs Stack Bytecode VM)".bright_cyan());
+
+    let content = match fs::read_to_string(filename) {
+        Ok(c) => c,
+        Err(err) => {
+            eprintln!("  {} Cannot read benchmark target: {}", "error:".red().bold(), err);
+            return;
+        }
+    };
+
+    let lexer = Lexer::new(&content);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    if !parser.errors.is_empty() {
+        eprintln!("  {} Program has syntax errors, aborting bench.", "error:".red().bold());
+        return;
+    }
+
+    // 1. Benchmark AST Tree-Walker
+    let t0 = std::time::Instant::now();
+    let env = Rc::new(RefCell::new(Environment::new()));
+    let _ = eval_program(&program, env);
+    let ast_duration = t0.elapsed();
+
+    // 2. Benchmark Stack Bytecode VM
+    let mut compiler = parvan::compiler::Compiler::new();
+    let compile_t0 = std::time::Instant::now();
+    let bytecode_res = compiler.compile(&program);
+    let compile_duration = compile_t0.elapsed();
+
+    let (vm_duration, op_count) = match bytecode_res {
+        Ok(bytecode) => {
+            let total_ops = bytecode.instructions.len();
+            let mut vm = parvan::vm::Vm::new(bytecode);
+            let vm_t0 = std::time::Instant::now();
+            let _ = vm.run();
+            (Some(vm_t0.elapsed()), total_ops)
+        }
+        Err(_) => (None, 0),
+    };
+
+    println!();
+    println!("  {} Performance Benchmark Results:", "⚡".bright_yellow());
+    println!("    • Tree-Walk AST Execution: {:>10.3?}", ast_duration);
+    if let Some(vm_d) = vm_duration {
+        println!("    • Bytecode Compiler Time:  {:>10.3?}", compile_duration);
+        println!("    • Stack VM Execution Time: {:>10.3?}", vm_d);
+        println!("    • Bytecode Instructions:   {:>10} ops", op_count);
+        if vm_d < ast_duration && vm_d.as_nanos() > 0 {
+            let ratio = (ast_duration.as_nanos() as f64) / (vm_d.as_nanos() as f64);
+            println!("    • Speedup Multiplier:      {:>10.1}x faster on VM", ratio);
+        }
+    }
+    println!();
+}
+
 fn run_project_tests() {
     println!("\n  {} {}\n", "🧪".cyan(), reshape_persian("در حال اجرای مجموعه آزمون‌های پروژه پروان...").bold());
     let mut total_tests = 0;
@@ -519,13 +585,37 @@ description = "A modern high-performance Parvan application"
 }
 
 fn install_package(pkg_name: &str) {
-    let pkg_dir = format!("parvan_modules/{}", pkg_name);
+    println!("  {} {} {}", "Fetching".bright_green().bold(), "package".bright_white(), pkg_name.bright_cyan());
+
+    let (dir_name, clone_url) = if pkg_name.contains('/') {
+        let repo_part = pkg_name.split('/').last().unwrap_or(pkg_name);
+        let url = format!("https://github.com/{}.git", pkg_name);
+        (repo_part.to_string(), Some(url))
+    } else {
+        (pkg_name.to_string(), None)
+    };
+
+    let pkg_dir = format!("parvan_modules/{}", dir_name);
     let _ = fs::create_dir_all(&pkg_dir);
+
+    // If GitHub repo given, clone or pull via git
+    if let Some(ref url) = clone_url {
+        let status = process::Command::new("git")
+            .args(["clone", "--depth", "1", url, &pkg_dir])
+            .status();
+
+        if let Ok(s) = status {
+            if s.success() {
+                println!("  {} Package '{}' installed from GitHub repository into {}", "Finished".bright_green().bold(), pkg_name.bright_white(), pkg_dir.bright_cyan());
+                return;
+            }
+        }
+    }
 
     // Official registry fallback templates
     let mod_file = format!("{}/mod.prv", pkg_dir);
     if !std::path::Path::new(&mod_file).exists() {
-        let template_content = match pkg_name {
+        let template_content = match dir_name.as_str() {
             "math_extra" => r#"// Parvan Official Math Extra Library
 let PI = 3.14159265359;
 let E = 2.71828182845;
@@ -541,7 +631,7 @@ let blue = (txt) -> "\u001b[34m" + txt + "\u001b[0m";
         let _ = fs::write(&mod_file, template_content);
     }
 
-    println!("  {} {}", "✔".green(), reshape_persian(&format!("پکیج '{}' با موفقیت از رجیستری دانلود و در parvan_modules مستقر شد.", pkg_name)));
+    println!("  {} Package '{}' installed successfully in {}", "Finished".bright_green().bold(), pkg_name.bright_white(), pkg_dir.bright_cyan());
 }
 
 fn install_all_packages() {

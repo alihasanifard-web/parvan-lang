@@ -65,8 +65,11 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "file_exists" | "وجود_فایل" => Some(Object::Builtin(builtin_file_exists)),
         "assert" | "اطمینان" => Some(Object::Builtin(builtin_assert)),
         "db_open" | "پایگاه_داده" => Some(Object::Builtin(builtin_db_open)),
-        "db_exec" | "اجرای_داده" => Some(Object::Builtin(builtin_db_exec)),
-        "db_query" | "پرسش_داده" => Some(Object::Builtin(builtin_db_query)),
+        "db_exec" | "اجرای_دیتابیس" => Some(Object::Builtin(builtin_db_exec)),
+        "db_query" | "پرسش_دیتابیس" => Some(Object::Builtin(builtin_db_query)),
+        "db_begin" | "شروع_تراکنش" => Some(Object::Builtin(builtin_db_begin)),
+        "db_commit" | "تایید_تراکنش" => Some(Object::Builtin(builtin_db_commit)),
+        "db_rollback" | "لغو_تراکنش" => Some(Object::Builtin(builtin_db_rollback)),
         "http_listen" | "شنود_وب" => Some(Object::Builtin(builtin_http_listen)),
         "spawn" | "پردازش_موازی" => Some(Object::Builtin(builtin_spawn)),
         _ => None,
@@ -1431,10 +1434,12 @@ fn builtin_db_exec(args: Vec<Object>) -> Result<Object, String> {
         }
     }
 
-    // Persist to disk
-    let stringified = builtin_json_stringify(vec![Object::Map(tables_obj)])?;
-    if let Object::Str(json_data) = stringified {
-        let _ = std::fs::write(&path, json_data);
+    // Persist to disk only if NOT in an active transaction
+    if !db_map.borrow().contains_key("_snapshot") {
+        let stringified = builtin_json_stringify(vec![Object::Map(tables_obj)])?;
+        if let Object::Str(json_data) = stringified {
+            let _ = std::fs::write(&path, json_data);
+        }
     }
 
     Ok(Object::Bool(true))
@@ -1467,9 +1472,113 @@ fn builtin_db_query(args: Vec<Object>) -> Result<Object, String> {
 
     let borrowed = tables_obj.borrow();
     match borrowed.get(table_name) {
-        Some(arr) => Ok(arr.clone()),
+        Some(arr) => {
+            // Check if parameters provided for filtering: [param1, ...]
+            if args.len() > 2 {
+                if let Object::Array(ref params) = args[2] {
+                    if let Object::Array(ref data_rows) = arr {
+                        let filtered: Vec<Object> = data_rows.borrow().iter().cloned().filter(|row| {
+                            // Check exact object match or string substring
+                            let row_str = row.to_string();
+                            params.borrow().iter().any(|p| {
+                                let p_str = p.to_string();
+                                if let Object::Map(m) = row {
+                                    m.borrow().values().any(|v| v.to_string() == p_str)
+                                } else {
+                                    row_str == p_str
+                                }
+                            })
+                        }).collect();
+                        return Ok(Object::Array(std::rc::Rc::new(std::cell::RefCell::new(filtered))));
+                    }
+                }
+            }
+            Ok(arr.clone())
+        }
         None => Ok(Object::Array(std::rc::Rc::new(std::cell::RefCell::new(Vec::new())))),
     }
+}
+
+fn builtin_db_begin(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع db_begin نیازمند شیء پایگاه داده است.".to_string());
+    }
+    if let Object::Map(m) = &args[0] {
+        let backup_opt = if let Some(Object::Map(tables)) = m.borrow().get("_tables") {
+            let mut deep_backup = std::collections::HashMap::new();
+            for (k, v) in tables.borrow().iter() {
+                if let Object::Array(arr) = v {
+                    deep_backup.insert(k.clone(), Object::Array(std::rc::Rc::new(std::cell::RefCell::new(arr.borrow().clone()))));
+                } else {
+                    deep_backup.insert(k.clone(), v.clone());
+                }
+            }
+            Some(deep_backup)
+        } else {
+            None
+        };
+        if let Some(backup) = backup_opt {
+            m.borrow_mut().insert("_snapshot".to_string(), Object::Map(std::rc::Rc::new(std::cell::RefCell::new(backup))));
+        }
+    }
+    Ok(Object::Bool(true))
+}
+
+fn builtin_db_commit(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع db_commit نیازمند شیء پایگاه داده است.".to_string());
+    }
+    if let Object::Map(m) = &args[0] {
+        let save_info = {
+            let borrowed = m.borrow();
+            let p = borrowed.get("_path").and_then(|obj| if let Object::Str(s) = obj { Some(s.clone()) } else { None });
+            let t = borrowed.get("_tables").cloned();
+            (p, t)
+        };
+        m.borrow_mut().remove("_snapshot");
+        if let (Some(path), Some(tables_obj)) = save_info {
+            let stringified = builtin_json_stringify(vec![tables_obj])?;
+            if let Object::Str(json_data) = stringified {
+                let _ = std::fs::write(path, json_data);
+            }
+        }
+    }
+    Ok(Object::Bool(true))
+}
+
+fn builtin_db_rollback(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع db_rollback نیازمند شیء پایگاه داده است.".to_string());
+    }
+    if let Object::Map(m) = &args[0] {
+        let restored_opt = {
+            let borrowed = m.borrow();
+            borrowed.get("_snapshot").and_then(|obj| {
+                if let Object::Map(snap) = obj {
+                    let mut deep_restored = std::collections::HashMap::new();
+                    for (k, v) in snap.borrow().iter() {
+                        if let Object::Array(arr) = v {
+                            deep_restored.insert(k.clone(), Object::Array(std::rc::Rc::new(std::cell::RefCell::new(arr.borrow().clone()))));
+                        } else {
+                            deep_restored.insert(k.clone(), v.clone());
+                        }
+                    }
+                    Some(deep_restored)
+                } else {
+                    None
+                }
+            })
+        };
+        if let Some(restored) = restored_opt {
+            let tables_obj_opt = m.borrow().get("_tables").cloned();
+            if let Some(Object::Map(tables)) = tables_obj_opt {
+                *tables.borrow_mut() = restored.clone();
+            }
+            m.borrow_mut().insert("_tables".to_string(), Object::Map(std::rc::Rc::new(std::cell::RefCell::new(restored))));
+            m.borrow_mut().remove("_snapshot");
+        }
+    }
+    Ok(Object::Bool(true))
 }
 
 // Lightweight HTTP Micro-Server

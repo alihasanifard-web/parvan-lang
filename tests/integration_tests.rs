@@ -531,6 +531,39 @@ mod tests {
     }
 
     #[test]
+    fn test_db_transactions_and_parametrized_queries() {
+        let temp_dir = std::env::temp_dir();
+        let db_file = temp_dir.join("test_tx_unique.db");
+        let path_str = db_file.to_str().unwrap().replace('\\', "/");
+        let _ = std::fs::remove_file(&db_file);
+
+        let script = format!(r#"
+            let db = db_open("{}");
+            db_exec(db, "CREATE TABLE users");
+            db_exec(db, "INSERT INTO users", {{"id": 1, "name": "Ali"}});
+            db_exec(db, "INSERT INTO users", {{"id": 2, "name": "Ehsan"}});
+
+            // Test Parametrized Query Filtering
+            let ali_res = db_query(db, "SELECT * FROM users", ["Ali"]);
+            let count_ali = len(ali_res);
+
+            // Test Transaction Rollback
+            db_begin(db);
+            db_exec(db, "INSERT INTO users", {{"id": 3, "name": "Temporary"}});
+            db_rollback(db);
+
+            let rolled_res = db_query(db, "SELECT * FROM users", ["Temporary"]);
+            let count_rolled = len(rolled_res);
+
+            count_ali * 10 + count_rolled;
+        "#, path_str);
+
+        let res = test_eval(&script).unwrap();
+        assert_eq!(res, Object::Int(10)); // 1 * 10 + 0
+
+        let _ = std::fs::remove_file(db_file);
+    }
+    #[test]
     fn test_modular_import_with_alias() {
         let temp_dir = std::env::temp_dir();
         let module_path = temp_dir.join("test_math_mod.prv");

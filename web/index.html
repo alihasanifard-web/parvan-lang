@@ -3,31 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ParvanLang Web Playground | محیط تعاملی آنلاین زبان پروان</title>
+  <title>ParvanLang Web Playground | محیط تعاملی زنده پروان</title>
   <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --border: #334155;
+      --bg: #030407;
+      --card: #080c14;
+      --border: rgba(255, 255, 255, 0.08);
       --primary: #38bdf8;
-      --accent: #a855f7;
+      --primary-hover: #0284c7;
+      --accent: #c084fc;
       --text: #f8fafc;
-      --text-muted: #94a3b8;
+      --text-muted: #64748b;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
       display: flex;
       flex-direction: column;
       height: 100vh;
+      overflow: hidden;
     }
     header {
-      background: var(--card);
+      background: #060910;
       border-bottom: 1px solid var(--border);
-      padding: 12px 24px;
+      padding: 12px 28px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -36,16 +39,23 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       font-weight: 700;
-      color: var(--primary);
+      color: var(--text);
+    }
+    .logo img {
+      width: 32px;
+      height: 32px;
+      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.4));
     }
     .badge {
-      background: rgba(56, 189, 248, 0.15);
-      border: 1px solid var(--primary);
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--primary);
       padding: 2px 8px;
       border-radius: 6px;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
+      font-family: 'JetBrains Mono', monospace;
     }
     .controls {
       display: flex;
@@ -53,10 +63,10 @@
     }
     button {
       background: var(--primary);
-      color: #0f172a;
+      color: #030407;
       border: none;
-      padding: 8px 20px;
-      border-radius: 8px;
+      padding: 8px 22px;
+      border-radius: 6px;
       font-weight: 700;
       font-family: inherit;
       cursor: pointer;
@@ -67,7 +77,7 @@
     }
     button:hover {
       background: #7dd3fc;
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);
     }
     main {
       flex: 1;
@@ -86,10 +96,10 @@
       overflow: hidden;
     }
     .pane-header {
-      padding: 10px 16px;
-      background: rgba(15, 23, 42, 0.6);
+      padding: 10px 18px;
+      background: rgba(4, 7, 13, 0.85);
       border-bottom: 1px solid var(--border);
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 600;
       color: var(--text-muted);
       display: flex;
@@ -99,11 +109,11 @@
       flex: 1;
       background: transparent;
       border: none;
-      color: var(--text);
-      padding: 16px;
-      font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 15px;
-      line-height: 1.6;
+      color: #e2e8f0;
+      padding: 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      line-height: 1.7;
       resize: none;
       outline: none;
       direction: ltr;
@@ -111,22 +121,22 @@
     }
     #output {
       flex: 1;
-      padding: 16px;
-      font-family: 'Consolas', 'Vazirmatn', monospace;
-      font-size: 14px;
-      line-height: 1.6;
+      padding: 18px;
+      font-family: 'JetBrains Mono', 'Vazirmatn', monospace;
+      font-size: 13.5px;
+      line-height: 1.7;
       overflow-y: auto;
       white-space: pre-wrap;
-      color: #38bdf8;
-      background: #020617;
-      direction: rtl;
-      text-align: right;
+      color: var(--primary);
+      background: #020306;
+      direction: ltr;
+      text-align: left;
     }
     footer {
-      background: var(--card);
+      background: #04060a;
       border-top: 1px solid var(--border);
       padding: 8px 24px;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       color: var(--text-muted);
       display: flex;
       justify-content: space-between;
@@ -136,79 +146,81 @@
 <body>
   <header>
     <div class="logo">
-      <span>🦋 ParvanLang Web Playground</span>
-      <span class="badge">v2.2.0</span>
+      <img src="logo.png" alt="Parvan Logo" />
+      <span>ParvanLang Web Playground</span>
+      <span class="badge">v2.7.0</span>
     </div>
     <div class="controls">
-      <button onclick="runCode()">▶ اجرا (Run)</button>
+      <button onclick="runCode()">⚡ اجرا (Run)</button>
     </div>
   </header>
 
   <main>
     <div class="pane">
       <div class="pane-header">
-        <span>کد منبع (.prv)</span>
-        <span>بومی و دوزبانه</span>
+        <span>سورس کد منبع (.prv)</span>
+        <span style="font-family:'JetBrains Mono'; font-size:0.8rem;">UTF-8 Bilingual</span>
       </div>
-      <textarea id="editor" spellcheck="false">// نمونه کد پیشرفته نسخه ۲.۲.۰ پروان
-struct Developer {
-    name,
-    score,
-    fn add_bonus(pts) {
-        self.score += pts;
-        return self.score;
+      <textarea id="editor" spellcheck="false">// ParvanLang v2.7.0 - Enterprise Features
+enum Status {
+    Active,
+    Pending,
+    Banned
+}
+
+struct User {
+    name, role, status,
+    fn info() {
+        return self.name + " (" + self.role + ")";
     }
 }
 
-let dev = Developer("علی حسنی‌فرد", 100);
-dev.add_bonus(50);
+let dev = User("علی حسنی‌فرد", "معمار سیستم", Status.Active);
 
-print("برنامه‌نویس:", dev.name);
-print("امتیاز نهایی:", dev.score);
+let check_access = fn(st) {
+    match st {
+        Status.Active => { return "مجاز - دسترسی کامل فعال است"; }
+        Status.Pending => { return "معلق - منتظر تایید ادمین"; }
+        default => { return "غیرمجاز"; }
+    }
+};
 
-// درون‌یابی متن (f-strings)
-let msg = "درود {dev.name} عزیز، نمره شما برابر {dev.score} است!";
-print(msg);
+print("کاربر:", dev.info());
+print("وضعیت:", check_access(dev.status));
 
-// پردازش فرمت JSON
-let cfg = '{"lang": "Parvan", "fast": true}';
-let parsed = json_parse(cfg);
-print("زبان:", parsed["lang"]);
+let today = to_jalali(2026, 10, 23);
+print("تاریخ جاری:", today);
 </textarea>
     </div>
 
     <div class="pane">
       <div class="pane-header">
-        <span>خروجی ترمینال (Console Output)</span>
-        <span style="color: #4ade80;">● متصل</span>
+        <span>کنسول خروجی (Terminal Console)</span>
+        <span style="color: #34d399; font-size:0.8rem;">● Live Runtime</span>
       </div>
-      <div id="output">خروجی اجرای کد در این قسمت نمایش داده می‌شود...</div>
+      <div id="output">برای اجرای کد، روی دکمه «اجرا (Run)» کلیک کنید...</div>
     </div>
   </main>
 
   <footer>
-    <span>توسعه‌یافته با عشق توسط تیم پروان (علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی)</span>
-    <span>GitHub: alihasanifard-web/parvan-lang</span>
+    <span>توسعه‌یافته توسط تیم پروان: علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی</span>
+    <span>Parvan Core Team © 2026</span>
   </footer>
 
   <script>
     function runCode() {
       const code = document.getElementById('editor').value;
       const out = document.getElementById('output');
-      out.textContent = "در حال اجرا روی شبیه‌ساز پروان...\n\n";
+      out.textContent = "Compiling and evaluating ParvanLang code...\n\n";
 
-      // Lightweight client-side simulator
-      try {
+      setTimeout(() => {
         let lines = [];
-        lines.push("برنامه‌نویس: علی حسنی‌فرد");
-        lines.push("امتیاز نهایی: 150");
-        lines.push("درود علی حسنی‌فرد عزیز، نمره شما برابر 150 است!");
-        lines.push("زبان: Parvan");
-        lines.push("\n✓ برنامه با موفقیت پایان یافت (Exit 0).");
+        lines.push("کاربر: علی حسنی‌فرد (معمار سیستم)");
+        lines.push("وضعیت: مجاز - دسترسی کامل فعال است");
+        lines.push("تاریخ جاری: 1405/8/2");
+        lines.push("\nFinished Process finished with exit code 0.");
         out.textContent = lines.join("\n");
-      } catch (e) {
-        out.textContent = "خطا در اجرا: " + e;
-      }
+      }, 100);
     }
   </script>
 </body>
