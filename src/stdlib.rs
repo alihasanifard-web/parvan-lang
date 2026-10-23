@@ -44,6 +44,10 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "sleep" | "صبر" => Some(Object::Builtin(builtin_sleep)),
         "json_stringify" | "متن_جیسون" => Some(Object::Builtin(builtin_json_stringify)),
         "json_parse" | "پارس_جیسون" => Some(Object::Builtin(builtin_json_parse)),
+        "remove_file" | "حذف_فایل" => Some(Object::Builtin(builtin_remove_file)),
+        "mkdir" | "ساخت_پوشه" => Some(Object::Builtin(builtin_mkdir)),
+        "list_dir" | "فهرست_پوشه" => Some(Object::Builtin(builtin_list_dir)),
+        "file_exists" | "وجود_فایل" => Some(Object::Builtin(builtin_file_exists)),
         _ => None,
     }
 }
@@ -943,4 +947,63 @@ fn parse_json_object(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result
         }
     }
     Ok(Object::Map(std::rc::Rc::new(std::cell::RefCell::new(map))))
+}
+
+fn builtin_remove_file(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع remove_file نیازمند ۱ مسیر فایل یا پوشه است.".to_string());
+    }
+    let path = match &args[0] {
+        Object::Str(p) => p.as_str(),
+        _ => return Err("مسیر باید رشته باشد.".to_string()),
+    };
+    let p = std::path::Path::new(path);
+    if p.is_dir() {
+        std::fs::remove_dir_all(path).map_err(|e| format!("خطای حذف پوشه '{}': {}", path, e))?;
+    } else {
+        std::fs::remove_file(path).map_err(|e| format!("خطای حذف فایل '{}': {}", path, e))?;
+    }
+    Ok(Object::Bool(true))
+}
+
+fn builtin_mkdir(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع mkdir نیازمند ۱ مسیر پوشه است.".to_string());
+    }
+    let path = match &args[0] {
+        Object::Str(p) => p.as_str(),
+        _ => return Err("مسیر پوشه باید رشته باشد.".to_string()),
+    };
+    std::fs::create_dir_all(path).map_err(|e| format!("خطای ایجاد پوشه '{}': {}", path, e))?;
+    Ok(Object::Bool(true))
+}
+
+fn builtin_list_dir(args: Vec<Object>) -> Result<Object, String> {
+    let path = if args.is_empty() {
+        "."
+    } else {
+        match &args[0] {
+            Object::Str(p) => p.as_str(),
+            _ => return Err("مسیر پوشه باید رشته باشد.".to_string()),
+        }
+    };
+    let entries = std::fs::read_dir(path).map_err(|e| format!("خطای خواندن پوشه '{}': {}", path, e))?;
+    let mut files = Vec::new();
+    for entry in entries.flatten() {
+        if let Some(name) = entry.file_name().to_str() {
+            files.push(Object::Str(name.to_string()));
+        }
+    }
+    Ok(Object::Array(std::rc::Rc::new(std::cell::RefCell::new(files))))
+}
+
+fn builtin_file_exists(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع file_exists نیازمند ۱ مسیر فایل یا پوشه است.".to_string());
+    }
+    let path = match &args[0] {
+        Object::Str(p) => p.as_str(),
+        _ => return Err("مسیر باید رشته باشد.".to_string()),
+    };
+    Ok(Object::Bool(std::path::Path::new(path).exists()))
 }

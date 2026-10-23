@@ -169,7 +169,34 @@ impl Compiler {
                 self.instructions.push(args.len() as u8);
                 Ok(())
             }
-            Expr::Infix(left, op, right, _) => {
+            Expr::Infix(left, op, right, tok) => {
+                // Constant Folding Optimization!
+                if let (Expr::Int(a, _), Expr::Int(b, _)) = (&**left, &**right) {
+                    match op {
+                        InfixOp::Plus => {
+                            let folded = Expr::Int(a + b, tok.clone());
+                            return self.compile_expression(&folded);
+                        }
+                        InfixOp::Minus => {
+                            let folded = Expr::Int(a - b, tok.clone());
+                            return self.compile_expression(&folded);
+                        }
+                        InfixOp::Multiply => {
+                            let folded = Expr::Int(a * b, tok.clone());
+                            return self.compile_expression(&folded);
+                        }
+                        InfixOp::Divide if *b != 0 => {
+                            let folded = Expr::Int(a / b, tok.clone());
+                            return self.compile_expression(&folded);
+                        }
+                        InfixOp::Modulo if *b != 0 => {
+                            let folded = Expr::Int(a % b, tok.clone());
+                            return self.compile_expression(&folded);
+                        }
+                        _ => {}
+                    }
+                }
+
                 self.compile_expression(left)?;
                 self.compile_expression(right)?;
 

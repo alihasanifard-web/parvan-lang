@@ -147,6 +147,63 @@ mod tests {
     }
 
     #[test]
+    fn test_optional_type_annotations() {
+        let res = test_eval(r#"
+            let name: str = "Ali";
+            let age: int = 22;
+            let pi: float = 3.14;
+            fn add_typed(a: int, b: int) {
+                return a + b;
+            }
+            let res = add_typed(10, 20);
+            name == "Ali" && age == 22 && res == 30;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
+    fn test_constant_folding_optimization() {
+        use parvan::compiler::Compiler;
+        use parvan::vm::Vm;
+        use parvan::lexer::Lexer;
+        use parvan::parser::Parser;
+
+        let input = "let x = 10 * 5 + 20; x;";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert!(parser.errors.is_empty());
+
+        let mut compiler = Compiler::new();
+        let bytecode = compiler.compile(&program).expect("VM compile failed");
+        let mut vm = Vm::new(bytecode);
+        let res = vm.run().expect("VM run failed");
+        assert_eq!(res, Object::Int(70));
+    }
+
+    #[test]
+    fn test_advanced_filesystem_builtins() {
+        let res = test_eval(r#"
+            let test_dir = "test_sandbox_parvan";
+            mkdir(test_dir);
+            let exists_dir = file_exists(test_dir);
+
+            let test_file = test_dir + "/sample.txt";
+            write_file(test_file, "Hello Parvan FS!");
+            let exists_file = file_exists(test_file);
+            let content = read_file(test_file);
+
+            remove_file(test_file);
+            let after_delete = file_exists(test_file);
+            let std_remove = remove_file(test_dir);
+
+            exists_dir && exists_file && content == "Hello Parvan FS!" && !after_delete && std_remove;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+        let _ = std::fs::remove_dir_all("test_sandbox_parvan");
+    }
+
+    #[test]
     fn test_vm_while_loops() {
         use parvan::compiler::Compiler;
         use parvan::vm::Vm;

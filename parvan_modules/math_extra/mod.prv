@@ -1,0 +1,4 @@
+// Parvan Official Math Extra Library
+let PI = 3.14159265359;
+let E = 2.71828182845;
+let deg_to_rad = (deg) -> deg * (PI / 180.0);

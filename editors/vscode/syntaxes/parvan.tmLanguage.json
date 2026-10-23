@@ -49,7 +49,7 @@
         },
         {
           "name": "storage.type.parvan",
-          "match": "\\b(let|const|fn|func|متغیر|بگذار|ثابت|تابع)\\b"
+          "match": "\\b(let|const|fn|func|struct|class|متغیر|بگذار|ثابت|تابع|ساختار|کلاس)\\b"
         },
         {
           "name": "constant.language.parvan",
@@ -57,7 +57,7 @@
         },
         {
           "name": "support.function.builtin.parvan",
-          "match": "\\b(print|چاپ|len|طول|push|افزودن|pop|حذف_آخر|range|بازه|keys|کلیدها|values|مقادیر|contains|شامل_است|reverse|معکوس|sort|مرتب_سازی|replace|جایگزینی|split|تفکیک|join|پیوستن|trim|پیرایش|uppercase|بزرگ|lowercase|کوچک|input|ورودی|time|زمان|read_file|خواندن_فایل|write_file|نوشتن_فایل|http_get|دریافت_وب|http_post|ارسال_وب|abs|قدر_مطلق|sqrt|جذر|floor|کف|ceil|سقف|round|گرد|exit|خروج)\\b"
+          "match": "\\b(print|چاپ|len|طول|push|افزودن|pop|حذف_آخر|range|بازه|keys|کلیدها|values|مقادیر|contains|شامل_است|reverse|معکوس|sort|مرتب_سازی|replace|جایگزینی|split|تفکیک|join|پیوستن|trim|پیرایش|uppercase|بزرگ|lowercase|کوچک|input|ورودی|time|زمان|read_file|خواندن_فایل|write_file|نوشتن_فایل|remove_file|حذف_فایل|mkdir|ساخت_پوشه|list_dir|فهرست_پوشه|file_exists|وجود_فایل|http_get|دریافت_وب|http_post|ارسال_وب|abs|قدر_مطلق|sqrt|جذر|floor|کف|ceil|سقف|round|گرد|random|تصادفی|sleep|صبر|json_parse|پارس_جیسون|json_stringify|متن_جیسون|exit|خروج)\\b"
         }
       ]
     },

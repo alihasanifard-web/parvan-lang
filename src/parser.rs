@@ -309,6 +309,12 @@ impl Parser {
             self.next_token();
             let var_name = name.clone();
 
+            // Optional type annotation: let x: int = 10;
+            if self.peek_token_is(&TokenKind::Colon) {
+                self.next_token(); // on ':'
+                self.next_token(); // on type name
+            }
+
             if !self.expect_peek(TokenKind::Assign) {
                 return None;
             }
@@ -1071,6 +1077,10 @@ impl Parser {
         self.next_token();
         if let TokenKind::Ident(ref name) = self.cur_token.kind {
             params.push(name.clone());
+            if self.peek_token_is(&TokenKind::Colon) {
+                self.next_token(); // on ':'
+                self.next_token(); // on type
+            }
         }
 
         while self.peek_token_is(&TokenKind::Comma) {
@@ -1078,6 +1088,10 @@ impl Parser {
             self.next_token();
             if let TokenKind::Ident(ref name) = self.cur_token.kind {
                 params.push(name.clone());
+                if self.peek_token_is(&TokenKind::Colon) {
+                    self.next_token(); // on ':'
+                    self.next_token(); // on type
+                }
             }
         }
 

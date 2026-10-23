@@ -2,7 +2,7 @@
   "name": "parvan-lang",
   "displayName": "Parvan Programming Language",
   "description": "Official syntax highlighting, Persian RTL support, and snippets for Parvan (.prv)",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "publisher": "parvan-team",
   "engines": {
     "vscode": "^1.70.0"
