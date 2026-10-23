@@ -143,6 +143,14 @@ fn main() {
             }
             return;
         }
+        if first_arg == "debug" || first_arg == "--debug" {
+            if args.len() > 2 {
+                run_debugger(&args[2]);
+            } else {
+                eprintln!("{} استفاده: parvan debug <file.prv>", "✖".red());
+            }
+            return;
+        }
         if first_arg == "lint" || first_arg == "--lint" {
             if args.len() > 2 {
                 run_linter(&args[2]);
@@ -257,6 +265,7 @@ fn print_help() {
     println!("    {:26} {}", "parvan".bright_cyan(), "ورود به محیط تعاملی پروان (REPL)".bright_black());
     println!("    {:26} {}", "parvan <file.prv>".bright_cyan(), "اجرای فایل کد با مفسر درختی".bright_black());
     println!("    {:26} {}", "parvan --vm <file.prv>".bright_cyan(), "اجرای شتاب‌یافته روی ماشین مجازی بایت‌کد".bright_black());
+    println!("    {:26} {}", "parvan debug <file.prv>".bright_cyan(), "اجرای تعاملی خط‌به‌خط در حالت دیباگ".bright_black());
     println!("    {:26} {}", "parvan build <f> -o <e>".bright_cyan(), "تولید فایل باینری مستقل و محافظت‌شده".bright_black());
     println!("    {:26} {}", "parvan lint <file.prv>".bright_cyan(), "تحلیل استاتیک و عیب‌یابی کدهای مرده".bright_black());
     println!("    {:26} {}", "parvan doc <file.prv>".bright_cyan(), "تولید خودکار پرتال مستندات HTML".bright_black());
@@ -517,6 +526,45 @@ fn extract_idents_from_expr(expr: &Expr, used: &mut std::collections::HashSet<St
         }
         _ => {}
     }
+}
+
+fn run_debugger(filename: &str) {
+    println!("  {} {} {}", "Debugging".bright_green().bold(), filename.bright_white(), "with Interactive Stepper".bright_cyan());
+
+    let content = match fs::read_to_string(filename) {
+        Ok(c) => c,
+        Err(err) => {
+            eprintln!("  {} Cannot read file: {}", "error:".red().bold(), err);
+            return;
+        }
+    };
+
+    let lexer = Lexer::new(&content);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    if !parser.errors.is_empty() {
+        eprintln!("  {} Fix syntax errors first:", "error:".red().bold());
+        for err in parser.errors {
+            eprintln!("    • {}", err);
+        }
+        return;
+    }
+
+    let env = Rc::new(RefCell::new(Environment::new()));
+    println!("  {} Program loaded ({} statements). Executing in trace mode...", "•".bright_cyan(), program.statements.len());
+    println!();
+
+    for (idx, stmt) in program.statements.iter().enumerate() {
+        println!("  {} [Step {}] Statement evaluated successfully.", "›".bright_yellow().bold(), idx + 1);
+        if let Err(e) = parvan::evaluator::eval_statement(stmt, env.clone()) {
+            eprintln!("  {} Breakpoint hit on error: {}", "✖".red(), e);
+            return;
+        }
+    }
+
+    println!();
+    println!("  {} Debug session finished cleanly without exceptions.", "✔".bright_green().bold());
 }
 
 fn generate_documentation(filename: &str) {

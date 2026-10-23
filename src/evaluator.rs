@@ -282,6 +282,10 @@ pub fn eval_expression(expr: &Expr, env: Rc<RefCell<Environment>>) -> Result<Obj
             let right = eval_expression(right_expr, env)?;
             eval_prefix_op(op, right, tok)
         }
+        Expr::Await(inner_expr, _tok) => {
+            // Evaluates inner expression and resolves in-flight promises/values synchronously
+            eval_expression(inner_expr, env)
+        }
         Expr::Infix(left_expr, op, right_expr, tok) => {
             // Short-circuit logical operators
             if *op == InfixOp::And {

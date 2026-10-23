@@ -521,6 +521,36 @@ mod tests {
     }
 
     #[test]
+    fn test_async_await_native_syntax() {
+        let res = test_eval(r#"
+            let fetch_data = async fn() {
+                return 42;
+            };
+
+            let compute = async fn() {
+                let val = await fetch_data();
+                return val * 2;
+            };
+
+            let final_res = await compute();
+            final_res;
+        "#).unwrap();
+        assert_eq!(res, Object::Int(84));
+    }
+
+    #[test]
+    fn test_persian_async_await_syntax() {
+        let res = test_eval(r#"
+            متغیر دریافت_داده = ناهمگام تابع() {
+                بازگردان 100;
+            };
+
+            متغیر نتیجه = صبر دریافت_داده();
+            نتیجه;
+        "#).unwrap();
+        assert_eq!(res, Object::Int(100));
+    }
+    #[test]
     fn test_channels_regex_and_ttl_cache() {
         let res = test_eval(r#"
             // 1. Test Channels

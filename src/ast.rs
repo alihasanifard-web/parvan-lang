@@ -40,6 +40,7 @@ pub enum Expr {
     Property(Box<Expr>, String, Token),
     PropertyAssign(Box<Expr>, String, Box<Expr>, Token),
     Assign(String, Box<Expr>, Token),
+    Await(Box<Expr>, Token),
     IndexAssign(Box<Expr>, Box<Expr>, Box<Expr>, Token),
     Function {
         name: Option<String>,

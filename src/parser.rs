@@ -816,6 +816,12 @@ impl Parser {
                 let right = self.parse_expression(Precedence::Prefix)?;
                 Some(Expr::Prefix(PrefixOp::Minus, Box::new(right), tok))
             }
+            TokenKind::Await => {
+                let tok = self.cur_token.clone();
+                self.next_token();
+                let right = self.parse_expression(Precedence::Prefix)?;
+                Some(Expr::Await(Box::new(right), tok))
+            }
             TokenKind::LParen => {
                 let _start_tok = self.cur_token.clone();
                 // Check if this is an arrow lambda like () -> expr or (x, y) -> expr
@@ -833,6 +839,15 @@ impl Parser {
             TokenKind::LBracket => self.parse_array_literal(),
             TokenKind::LBrace => self.parse_map_literal(),
             TokenKind::Fn => self.parse_function_literal(),
+            TokenKind::Async => {
+                self.next_token(); // consume 'async'
+                if self.cur_token_is(&TokenKind::Fn) {
+                    self.parse_function_literal()
+                } else {
+                    self.errors.push(format!("انتظار کلیدواژه fn بعد از async در سطر {}", self.cur_token.line));
+                    None
+                }
+            }
             _ => {
                 self.errors.push(format!(
                     "خطای عبارت: توکن غیرمنتظره {:?} در سطر {}",

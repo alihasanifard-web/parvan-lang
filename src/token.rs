@@ -69,6 +69,8 @@ pub enum TokenKind {
     Catch,      // catch / خطا
     Switch,     // switch / انتخاب
     Case,       // case / حالت
+    Async,      // async / ناهمگام
+    Await,      // await / صبر / منتظر
     Default,    // default / پیش‌فرض
     Enum,       // enum / شمارش
     Match,      // match / تطبیق
