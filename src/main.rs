@@ -11,7 +11,7 @@ use std::io::{self, Write};
 use std::process;
 use std::rc::Rc;
 
-const VERSION: &str = "2.3.0 (Full-Stack Multi-Paradigm Edition)";
+const VERSION: &str = "2.4.0 (Enterprise Industrial Edition)";
 
 #[cfg(target_os = "windows")]
 fn set_windows_console_font() {
@@ -81,6 +81,10 @@ fn main() {
         }
         if first_arg == "--init" {
             init_project();
+            return;
+        }
+        if first_arg == "test" || first_arg == "--test" {
+            run_project_tests();
             return;
         }
         if first_arg == "fmt" || first_arg == "--fmt" {
@@ -175,10 +179,66 @@ fn print_help() {
     println!("    parvan <file.prv>       Execute code file / {}", reshape_persian("اجرای فایل کد"));
     println!("    parvan --vm <file.prv>  Run via Bytecode Virtual Machine / {}", reshape_persian("اجرا روی ماشین مجازی بایت‌کد"));
     println!("    parvan fmt [file.prv]   Format code files / {}", reshape_persian("مرتب‌سازی و فرمت خودکار فایل‌های کد"));
+    println!("    parvan test             Run internal test suite / {}", reshape_persian("اجرای خودکار آزمون‌های پروژه"));
     println!("    parvan --init           Initialize Parvan project / {}", reshape_persian("ایجاد پروژه جدید پروان (Parvan.toml)"));
     println!("    parvan --install <pkg>  Install remote package / {}", reshape_persian("نصب پکیج و کتابخانه جدید"));
     println!("    parvan --version        Display version / {}", reshape_persian("نمایش نسخه"));
     println!("    parvan --help           Show help / {}", reshape_persian("راهنمای دستورات"));
+    println!();
+}
+
+fn run_project_tests() {
+    println!("\n  {} {}\n", "🧪".cyan(), reshape_persian("در حال اجرای مجموعه آزمون‌های پروژه پروان...").bold());
+    let mut total_tests = 0;
+    let mut passed_tests = 0;
+    let mut failed_tests = 0;
+
+    let test_dirs = vec![".", "tests", "examples"];
+    for dir in test_dirs {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().map_or(false, |ext| ext == "prv") {
+                    let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+                    if file_name.contains("test") || file_name.contains("demo") || file_name.contains("features") {
+                        total_tests += 1;
+                        let content = match fs::read_to_string(&path) {
+                            Ok(c) => c,
+                            Err(_) => continue,
+                        };
+                        let lexer = Lexer::new(&content);
+                        let mut parser = Parser::new(lexer);
+                        let program = parser.parse_program();
+
+                        if !parser.errors.is_empty() {
+                            println!("  {} {} ... {}", "•".red(), file_name, "FAILED (Syntax)".red());
+                            failed_tests += 1;
+                            continue;
+                        }
+
+                        let env = Rc::new(RefCell::new(Environment::new()));
+                        match parvan::evaluator::eval_program(&program, env) {
+                            Ok(_) => {
+                                println!("  {} {} ... {}", "•".green(), file_name, "PASSED".green());
+                                passed_tests += 1;
+                            }
+                            Err(e) => {
+                                println!("  {} {} ... {} ({})", "•".red(), file_name, "FAILED".red(), e);
+                                failed_tests += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    println!("\n  {}", "----------------------------------------".dimmed());
+    if failed_tests == 0 {
+        println!("  {} {}", "✓".green(), reshape_persian(&format!("تمامی {} آزمون با موفقیت پاس شدند! (100% موفق)", total_tests)).green().bold());
+    } else {
+        println!("  {} نتایج: {} موفق، {} شکست از مجموع {}", "✖".red(), passed_tests, failed_tests, total_tests);
+    }
     println!();
 }
 

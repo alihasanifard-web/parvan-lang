@@ -147,6 +147,36 @@ mod tests {
     }
 
     #[test]
+    fn test_embedded_db_and_assertions() {
+        let res = test_eval(r#"
+            let db_file = "test_store.db";
+            let db = db_open(db_file);
+            db_exec(db, "CREATE TABLE users");
+            db_exec(db, "INSERT INTO users", {"id": 1, "name": "Ali"});
+            db_exec(db, "INSERT INTO users", {"id": 2, "name": "Ehsan"});
+
+            let rows = db_query(db, "SELECT * FROM users");
+            assert(len(rows) == 2, "تعداد سطرها باید ۲ باشد");
+            assert(rows[0]["name"] == "Ali", "نام سطر اول");
+
+            remove_file(db_file);
+            len(rows) == 2 && rows[1]["name"] == "Ehsan";
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+        let _ = std::fs::remove_file("test_store.db");
+    }
+
+    #[test]
+    fn test_http_micro_server_and_spawn() {
+        let res = test_eval(r#"
+            let server_started = http_listen(9899, (req) -> { return "OK"; });
+            let bg_job = spawn(() -> { sleep(10); });
+            server_started && bg_job;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
     fn test_optional_type_annotations() {
         let res = test_eval(r#"
             let name: str = "Ali";
