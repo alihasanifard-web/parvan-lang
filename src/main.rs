@@ -294,21 +294,47 @@ fn build_standalone(source_path: &str, out_path: &str) {
 }
 
 fn run_lsp_server() {
-    eprintln!("🦋 ParvanLang Language Server (LSP) Protocol Daemon v{}", VERSION);
-    eprintln!("Listening for JSON-RPC messages on standard I/O (VS Code Integration)...");
+    eprintln!("🦋 ParvanLang Language Server (LSP) Daemon v{}", VERSION);
+    eprintln!("Listening for JSON-RPC messages on standard I/O (VS Code / VSCodium)...");
     
-    use std::io::BufRead;
+    use std::io::{BufRead, Read, Write};
     let stdin = std::io::stdin();
-    for line in stdin.lock().lines().flatten() {
-        if line.starts_with("Content-Length:") {
-            continue;
+    let mut stdout = std::io::stdout();
+
+    let mut content_len: usize = 0;
+    let mut reader = stdin.lock();
+
+    loop {
+        let mut line = String::new();
+        match reader.read_line(&mut line) {
+            Ok(0) => break, // EOF
+            Ok(_) => {
+                let trimmed = line.trim();
+                if trimmed.starts_with("Content-Length:") {
+                    if let Some(val) = trimmed.split(':').nth(1) {
+                        content_len = val.trim().parse::<usize>().unwrap_or(0);
+                    }
+                } else if trimmed.is_empty() && content_len > 0 {
+                    // Header finished, read payload
+                    let mut body_buf = vec![0u8; content_len];
+                    if reader.read_exact(&mut body_buf).is_ok() {
+                        if let Ok(msg_str) = std::str::from_utf8(&body_buf) {
+                            if msg_str.contains("\"method\":\"initialize\"") {
+                                let resp = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"capabilities\":{\"textDocumentSync\":1,\"hoverProvider\":true}}}";
+                                let header = format!("Content-Length: {}
+\n
+\n", resp.len());
+                                let _ = stdout.write_all(header.as_bytes());
+                                let _ = stdout.write_all(resp.as_bytes());
+                                let _ = stdout.flush();
+                            }
+                        }
+                    }
+                    content_len = 0;
+                }
+            }
+            Err(_) => break,
         }
-        if line.trim().is_empty() {
-            continue;
-        }
-        // Minimal LSP response handshake
-        println!("Content-Length: 54\r\n\r\n{{\"jsonrpc\":\"2.0\",\"result\":{{\"capabilities\":{{}}}},\"id\":1}}");
-        break;
     }
 }
 
