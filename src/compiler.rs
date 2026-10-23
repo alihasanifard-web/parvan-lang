@@ -23,10 +23,42 @@ impl Compiler {
             self.compile_statement(stmt)?;
         }
 
+        self.optimize_peephole();
+
         Ok(Bytecode {
             instructions: self.instructions.clone(),
             constants: self.constants.clone(),
         })
+    }
+
+    fn optimize_peephole(&mut self) {
+        // Redundant Pop after Push optimizer
+        if self.instructions.len() < 4 {
+            return;
+        }
+
+        let mut opt = Vec::with_capacity(self.instructions.len());
+        let mut i = 0;
+        let op_constant = Opcode::OpConstant as u8;
+        let op_pop = Opcode::OpPop as u8;
+
+        while i < self.instructions.len() {
+            // Pattern: OpConstant (3 bytes) followed by OpPop (1 byte) -> eliminated
+            if i + 3 < self.instructions.len() 
+                && self.instructions[i] == op_constant 
+                && self.instructions[i + 3] == op_pop 
+            {
+                i += 4;
+                continue;
+            }
+            opt.push(self.instructions[i]);
+            i += 1;
+        }
+
+        // If no jumps were broken (length didn't drift drastically), apply
+        if opt.len() < self.instructions.len() && !self.instructions.contains(&(Opcode::OpJump as u8)) {
+            self.instructions = opt;
+        }
     }
 
     fn compile_statement(&mut self, stmt: &Stmt) -> Result<(), String> {

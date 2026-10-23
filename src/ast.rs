@@ -106,6 +106,7 @@ pub enum Stmt {
     },
     Import {
         path: String,
+        alias: Option<String>,
         token: Token,
     },
     TryCatch {
@@ -124,6 +125,17 @@ pub enum Stmt {
         name: String,
         fields: Vec<String>,
         methods: Vec<StructMethod>,
+        token: Token,
+    },
+    Enum {
+        name: String,
+        variants: Vec<String>,
+        token: Token,
+    },
+    Match {
+        condition: Expr,
+        arms: Vec<(Expr, BlockStmt)>,
+        default: Option<BlockStmt>,
         token: Token,
     },
 }

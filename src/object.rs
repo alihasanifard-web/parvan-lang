@@ -167,6 +167,14 @@ impl Environment {
         self.store.insert(name, (val, is_const));
     }
 
+    pub fn get_all_bindings(&self) -> HashMap<String, Object> {
+        let mut map = HashMap::new();
+        for (k, (v, _)) in &self.store {
+            map.insert(k.clone(), v.clone());
+        }
+        map
+    }
+
     pub fn assign(&mut self, name: &str, val: Object) -> Result<(), String> {
         if let Some((target, is_const)) = self.store.get_mut(name) {
             if *is_const {

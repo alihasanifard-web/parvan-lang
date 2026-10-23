@@ -135,6 +135,10 @@ impl Lexer {
                     self.read_char();
                     self.read_char();
                     Token::new(TokenKind::Eq, "==".to_string(), line, col)
+                } else if self.peek_char() == Some('>') {
+                    self.read_char();
+                    self.read_char();
+                    Token::new(TokenKind::FatArrow, "=>".to_string(), line, col)
                 } else {
                     self.read_char();
                     Token::new(TokenKind::Assign, "=".to_string(), line, col)
@@ -268,12 +272,15 @@ impl Lexer {
             "continue" => TokenKind::Continue,
             "print" => TokenKind::Print,
             "import" => TokenKind::Import,
+            "as" => TokenKind::As,
             "try" => TokenKind::Try,
             "catch" => TokenKind::Catch,
             "switch" => TokenKind::Switch,
             "case" => TokenKind::Case,
             "default" => TokenKind::Default,
             "struct" | "class" => TokenKind::Struct,
+            "enum" => TokenKind::Enum,
+            "match" => TokenKind::Match,
             "true" => TokenKind::Bool(true),
             "false" => TokenKind::Bool(false),
             "nil" | "null" => TokenKind::Nil,
@@ -291,13 +298,16 @@ impl Lexer {
             "شکست" => TokenKind::Break,
             "ادامه" => TokenKind::Continue,
             "چاپ" => TokenKind::Print,
-            "وارد_کن" | "پیوست" => TokenKind::Import,
+            "وارد_کن" | "پیوست" | "وارد_کردن" => TokenKind::Import,
+            "به_عنوان" | "چون" => TokenKind::As,
             "تلاش" => TokenKind::Try,
             "خطا" | "گرفتن_خطا" => TokenKind::Catch,
             "انتخاب" => TokenKind::Switch,
             "حالت" => TokenKind::Case,
-            "پیش‌فرض" | "پیش_فرض" => TokenKind::Default,
+            "پیش‌فرض" | "پیش_فرض" | "پیشفرض" => TokenKind::Default,
             "ساختار" | "کلاس" => TokenKind::Struct,
+            "شمارش" => TokenKind::Enum,
+            "تطبیق" | "انطباق" => TokenKind::Match,
             "درست" => TokenKind::Bool(true),
             "غلط" => TokenKind::Bool(false),
             "هیچ" => TokenKind::Nil,

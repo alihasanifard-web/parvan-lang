@@ -125,6 +125,8 @@ impl Parser {
             TokenKind::Try => self.parse_try_catch_statement(),
             TokenKind::Switch => self.parse_switch_statement(),
             TokenKind::Struct => self.parse_struct_statement(),
+            TokenKind::Enum => self.parse_enum_statement(),
+            TokenKind::Match => self.parse_match_statement(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -201,6 +203,86 @@ impl Parser {
         })
     }
 
+    fn parse_enum_statement(&mut self) -> Option<Stmt> {
+        let tok = self.cur_token.clone();
+        self.next_token(); // on enum name
+
+        let name = if let TokenKind::Ident(ref n) = self.cur_token.kind {
+            n.clone()
+        } else {
+            self.errors.push(format!("انتظار نام enum در سطر {}", self.cur_token.line));
+            return None;
+        };
+
+        if !self.expect_peek(TokenKind::LBrace) {
+            return None;
+        }
+
+        self.next_token(); // inside '{'
+        let mut variants = Vec::new();
+
+        while !self.cur_token_is(&TokenKind::RBrace) && !self.cur_token_is(&TokenKind::Eof) {
+            if let TokenKind::Ident(ref v_name) = self.cur_token.kind.clone() {
+                variants.push(v_name.clone());
+                if self.peek_token_is(&TokenKind::Comma) {
+                    self.next_token();
+                }
+            }
+            self.next_token();
+        }
+
+        Some(Stmt::Enum {
+            name,
+            variants,
+            token: tok,
+        })
+    }
+
+    fn parse_match_statement(&mut self) -> Option<Stmt> {
+        let tok = self.cur_token.clone();
+        self.next_token(); // on condition
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(TokenKind::LBrace) {
+            return None;
+        }
+
+        self.next_token(); // inside '{'
+        let mut arms = Vec::new();
+        let mut default_branch = None;
+
+        while !self.cur_token_is(&TokenKind::RBrace) && !self.cur_token_is(&TokenKind::Eof) {
+            if self.cur_token_is(&TokenKind::Default) {
+                self.next_token(); // on '=>' or '{'
+                if self.cur_token_is(&TokenKind::FatArrow) || self.cur_token_is(&TokenKind::Arrow) {
+                    self.next_token();
+                }
+                if self.cur_token_is(&TokenKind::LBrace) {
+                    default_branch = Some(self.parse_block_statement());
+                }
+            } else {
+                let pat_expr = self.parse_expression(Precedence::Lowest)?;
+                if !self.expect_peek(TokenKind::FatArrow) && !self.expect_peek(TokenKind::Arrow) {
+                    return None;
+                }
+                if !self.expect_peek(TokenKind::LBrace) {
+                    return None;
+                }
+                let body = self.parse_block_statement();
+                arms.push((pat_expr, body));
+            }
+            self.next_token();
+        }
+
+        Some(Stmt::Match {
+            condition,
+            arms,
+            default: default_branch,
+            token: tok,
+        })
+    }
+
     fn parse_switch_statement(&mut self) -> Option<Stmt> {
         let tok = self.cur_token.clone();
         self.next_token(); // on condition
@@ -256,10 +338,18 @@ impl Parser {
         self.next_token();
         if let TokenKind::Str(ref path) = self.cur_token.kind.clone() {
             let p = path.clone();
+            let mut alias = None;
+            if self.peek_token_is(&TokenKind::As) {
+                self.next_token(); // consume 'as'
+                if let TokenKind::Ident(ref id) = self.peek_token.kind.clone() {
+                    self.next_token(); // consume alias
+                    alias = Some(id.clone());
+                }
+            }
             if self.peek_token_is(&TokenKind::Semicolon) {
                 self.next_token();
             }
-            Some(Stmt::Import { path: p, token: tok })
+            Some(Stmt::Import { path: p, alias, token: tok })
         } else {
             self.errors.push(format!("دستور import نیازمند مسیر فایلی به شکل رشته است در سطر {}", tok.line));
             None

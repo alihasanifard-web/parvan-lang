@@ -48,6 +48,7 @@ pub enum TokenKind {
     LBracket,   // [
     RBracket,   // ]
     Arrow,      // ->
+    FatArrow,   // =>
 
     // Keywords (English + Persian Aliases!)
     Let,        // let / بگذار / متغیر
@@ -63,11 +64,14 @@ pub enum TokenKind {
     Continue,   // continue / ادامه
     Print,      // print / چاپ
     Import,     // import / وارد_کن
+    As,         // as / به_عنوان
     Try,        // try / تلاش
     Catch,      // catch / خطا
     Switch,     // switch / انتخاب
     Case,       // case / حالت
     Default,    // default / پیش‌فرض
+    Enum,       // enum / شمارش
+    Match,      // match / تطبیق
     Struct,     // struct / ساختار
 }
 

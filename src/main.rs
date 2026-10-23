@@ -11,7 +11,7 @@ use std::io::{self, Write};
 use std::process;
 use std::rc::Rc;
 
-const VERSION: &str = "2.6.0 (Grand Standalone & LSP Ecosystem)";
+const VERSION: &str = "2.7.0 (Modular Import, Enums & Peephole VM)";
 const MAGIC_MARKER: &[u8] = b"__PARVAN_PAYLOAD_V260_TAG__";
 
 
@@ -535,9 +535,9 @@ fn run_code_content(content: &str) {
 
     if !parser.errors.is_empty() {
         eprintln!();
-        eprintln!("  {}", reshape_persian("خطاهای نحوی در برنامه:").red().bold());
+        eprintln!("  {} Syntax errors in source:", "error:".red().bold());
         for err in parser.errors {
-            eprintln!("  {} {}", "•".red(), reshape_persian(&err));
+            eprintln!("    {} {}", "•".red(), err);
         }
         eprintln!();
         process::exit(1);
@@ -545,7 +545,12 @@ fn run_code_content(content: &str) {
 
     let env = Rc::new(RefCell::new(Environment::new()));
     if let Err(err) = eval_program(&program, env) {
-        eprintln!("  {} {}", "✖".red(), reshape_persian(&err));
+        eprintln!();
+        eprintln!("  {} Runtime exception caught:", "error:".red().bold());
+        eprintln!("    {} {}", "•".red(), err);
+        eprintln!("    {} Traceback (most recent call first):", "↳".bright_yellow());
+        eprintln!("      at <entrypoint> in source program");
+        eprintln!();
         process::exit(1);
     }
 }

@@ -139,7 +139,7 @@ pub fn eval_statement(stmt: &Stmt, env: Rc<RefCell<Environment>>) -> Result<Obje
         }
         Stmt::Break(_) => Ok(Object::Break),
         Stmt::Continue(_) => Ok(Object::Continue),
-        Stmt::Import { path, token } => {
+        Stmt::Import { path, alias, token } => {
             let code = std::fs::read_to_string(path)
                 .map_err(|e| format!("خطای وارد کردن ماژول '{}' در سطر {}: {}", path, token.line, e))?;
             let lexer = crate::lexer::Lexer::new(&code);
@@ -148,7 +148,14 @@ pub fn eval_statement(stmt: &Stmt, env: Rc<RefCell<Environment>>) -> Result<Obje
             if !parser.errors.is_empty() {
                 return Err(format!("خطاهای نحوی در ماژول وارد شده '{}': {:?}", path, parser.errors));
             }
-            eval_program(&program, env)?;
+            if let Some(alias_name) = alias {
+                let module_env = Rc::new(RefCell::new(Environment::new()));
+                eval_program(&program, module_env.clone())?;
+                let bindings = module_env.borrow().get_all_bindings();
+                env.borrow_mut().set(alias_name.clone(), Object::Map(Rc::new(RefCell::new(bindings))), false);
+            } else {
+                eval_program(&program, env)?;
+            }
             Ok(Object::Nil)
         }
         Stmt::TryCatch { try_block, err_var, catch_block, .. } => {
@@ -198,6 +205,37 @@ pub fn eval_statement(stmt: &Stmt, env: Rc<RefCell<Environment>>) -> Result<Obje
             };
             env.borrow_mut().set(name.clone(), struct_obj, false);
             Ok(Object::Nil)
+        }
+        Stmt::Enum { name, variants, .. } => {
+            let mut variant_map = std::collections::HashMap::new();
+            for v in variants {
+                variant_map.insert(v.clone(), Object::Str(format!("{}::{}", name, v)));
+            }
+            let enum_obj = Object::Map(Rc::new(RefCell::new(variant_map)));
+            env.borrow_mut().set(name.clone(), enum_obj, false);
+            Ok(Object::Nil)
+        }
+        Stmt::Match { condition, arms, default, .. } => {
+            let target_val = eval_expression(condition, env.clone())?;
+            let mut matched = false;
+            let mut result = Object::Nil;
+
+            for (pat_expr, body) in arms {
+                let pat_val = eval_expression(pat_expr, env.clone())?;
+                if pat_val == target_val {
+                    matched = true;
+                    result = eval_block_statement(body, env.clone())?;
+                    break;
+                }
+            }
+
+            if !matched {
+                if let Some(def_block) = default {
+                    result = eval_block_statement(def_block, env)?;
+                }
+            }
+
+            Ok(result)
         }
     }
 }

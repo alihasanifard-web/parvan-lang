@@ -512,6 +512,92 @@ mod tests {
     }
 
     #[test]
+    fn test_modular_import_with_alias() {
+        let temp_dir = std::env::temp_dir();
+        let module_path = temp_dir.join("test_math_mod.prv");
+        std::fs::write(&module_path, r#"
+            let add = fn(a, b) { return a + b; };
+            let magic = 42;
+        "#).unwrap();
+
+        let path_str = module_path.to_str().unwrap().replace('\\', "/");
+        let script = format!(r#"
+            import "{}" as my_math;
+            let res = my_math.add(10, my_math.magic);
+            res;
+        "#, path_str);
+
+        let res = test_eval(&script).unwrap();
+        assert_eq!(res, Object::Int(52));
+
+        let _ = std::fs::remove_file(module_path);
+    }
+
+    #[test]
+    fn test_enum_and_pattern_matching() {
+        let res = test_eval(r#"
+            enum Status {
+                Active,
+                Pending,
+                Banned
+            }
+
+            let get_code = fn(s) {
+                match s {
+                    Status.Active => { return 100; }
+                    Status.Pending => { return 200; }
+                    default => { return 400; }
+                }
+            };
+
+            let res1 = get_code(Status.Active);
+            let res2 = get_code(Status.Banned);
+            res1 + res2;
+        "#).unwrap();
+        assert_eq!(res, Object::Int(500));
+    }
+
+    #[test]
+    fn test_persian_enum_and_match() {
+        let res = test_eval(r#"
+            شمارش وضعیت {
+                فعال,
+                معلق
+            }
+
+            متغیر نتیجه = 0;
+            تطبیق وضعیت.فعال {
+                وضعیت.فعال => { نتیجه = 77; }
+                پیش_فرض => { نتیجه = 0; }
+            }
+            نتیجه;
+        "#).unwrap();
+        assert_eq!(res, Object::Int(77));
+    }
+
+    #[test]
+    fn test_vm_peephole_bytecode_optimization() {
+        let code = r#"
+            let a = 10;
+            let b = 20;
+            let c = a + b;
+            c;
+        "#;
+        let lexer = Lexer::new(code);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert!(parser.errors.is_empty());
+
+        let mut compiler = parvan::compiler::Compiler::new();
+        let bytecode = compiler.compile(&program).unwrap();
+        assert!(!bytecode.instructions.is_empty());
+
+        let mut vm = parvan::vm::Vm::new(bytecode);
+        let res = vm.run().unwrap();
+        assert_eq!(res, Object::Int(30));
+    }
+
+    #[test]
     fn test_try_catch_resilience() {
         let res = test_eval(r#"
             let caught = false;
