@@ -14,7 +14,9 @@ pub enum TokenKind {
 
     // Operators
     Plus,       // +
+    PlusPlus,   // ++
     Minus,      // -
+    MinusMinus, // --
     Asterisk,   // *
     Slash,      // /
     Percent,    // %

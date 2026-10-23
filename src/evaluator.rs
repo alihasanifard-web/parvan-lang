@@ -72,26 +72,70 @@ pub fn eval_statement(stmt: &Stmt, env: Rc<RefCell<Environment>>) -> Result<Obje
             }
             Ok(result)
         }
-        Stmt::For { var, iterable, body, .. } => {
+        Stmt::For { var, val_var, iterable, body, .. } => {
             let iter_val = eval_expression(iterable, env.clone())?;
-            let items = match iter_val {
-                Object::Array(arr) => arr.borrow().clone(),
-                Object::Str(s) => s.chars().map(|c| Object::Str(c.to_string())).collect(),
-                _ => return Err("دستور for فقط روی آرایه‌ها، بازه‌ها (range) یا رشته‌ها کار می‌کند.".to_string()),
-            };
-
-            let mut result = Object::Nil;
-            for item in items {
-                env.borrow_mut().set(var.clone(), item, false);
-                result = eval_block_statement(body, env.clone())?;
-                if let Object::ReturnValue(_) = result {
-                    return Ok(result);
+            match iter_val {
+                Object::Map(m) => {
+                    let pairs: Vec<(String, Object)> = m.borrow().iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+                    let mut result = Object::Nil;
+                    for (k, v) in pairs {
+                        env.borrow_mut().set(var.clone(), Object::Str(k.clone()), false);
+                        if let Some(v_name) = val_var {
+                            env.borrow_mut().set(v_name.clone(), v, false);
+                        }
+                        result = eval_block_statement(body, env.clone())?;
+                        if let Object::ReturnValue(_) = result {
+                            return Ok(result);
+                        }
+                        if let Object::Break = result {
+                            break;
+                        }
+                    }
+                    Ok(result)
                 }
-                if let Object::Break = result {
-                    break;
+                Object::Array(arr) => {
+                    let items = arr.borrow().clone();
+                    let mut result = Object::Nil;
+                    for (idx, item) in items.into_iter().enumerate() {
+                        if let Some(v_name) = val_var {
+                            // for [idx, item] in array
+                            env.borrow_mut().set(var.clone(), Object::Int(idx as i64), false);
+                            env.borrow_mut().set(v_name.clone(), item, false);
+                        } else {
+                            env.borrow_mut().set(var.clone(), item, false);
+                        }
+                        result = eval_block_statement(body, env.clone())?;
+                        if let Object::ReturnValue(_) = result {
+                            return Ok(result);
+                        }
+                        if let Object::Break = result {
+                            break;
+                        }
+                    }
+                    Ok(result)
                 }
+                Object::Str(s) => {
+                    let items: Vec<Object> = s.chars().map(|c| Object::Str(c.to_string())).collect();
+                    let mut result = Object::Nil;
+                    for (idx, item) in items.into_iter().enumerate() {
+                        if let Some(v_name) = val_var {
+                            env.borrow_mut().set(var.clone(), Object::Int(idx as i64), false);
+                            env.borrow_mut().set(v_name.clone(), item, false);
+                        } else {
+                            env.borrow_mut().set(var.clone(), item, false);
+                        }
+                        result = eval_block_statement(body, env.clone())?;
+                        if let Object::ReturnValue(_) = result {
+                            return Ok(result);
+                        }
+                        if let Object::Break = result {
+                            break;
+                        }
+                    }
+                    Ok(result)
+                }
+                _ => return Err("دستور for فقط روی آرایه‌ها، دیکشنری‌ها، بازه‌ها یا رشته‌ها کار می‌کند.".to_string()),
             }
-            Ok(result)
         }
         Stmt::Break(_) => Ok(Object::Break),
         Stmt::Continue(_) => Ok(Object::Continue),

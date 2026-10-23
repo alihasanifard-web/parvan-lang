@@ -113,6 +113,40 @@ mod tests {
     }
 
     #[test]
+    fn test_increment_and_decrement_operators() {
+        let res = test_eval(r#"
+            let count = 10;
+            count++;
+            count++;
+            let after_inc = count;
+            count--;
+            let after_dec = count;
+            after_inc == 12 && after_dec == 11;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
+    fn test_map_and_array_destructuring_iteration() {
+        let res = test_eval(r#"
+            let data = {"a": 10, "b": 20};
+            let sum_vals = 0;
+            for [k, v] in data {
+                sum_vals = sum_vals + v;
+            }
+
+            let arr = ["first", "second"];
+            let idx_sum = 0;
+            for [idx, item] in arr {
+                idx_sum = idx_sum + idx;
+            }
+
+            sum_vals == 30 && idx_sum == 1;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
     fn test_vm_while_loops() {
         use parvan::compiler::Compiler;
         use parvan::vm::Vm;

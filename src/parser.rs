@@ -430,12 +430,46 @@ impl Parser {
 
     fn parse_for_statement(&mut self) -> Option<Stmt> {
         let tok = self.cur_token.clone();
-        let var_name = if let TokenKind::Ident(ref name) = self.peek_token.kind.clone() {
+        let var_name: String;
+        let mut val_var = None;
+
+        if self.peek_token_is(&TokenKind::LBracket) {
+            // for [k, v] in map
+            self.next_token(); // on '['
+            self.next_token(); // on k
+            if let TokenKind::Ident(ref k) = self.cur_token.kind.clone() {
+                var_name = k.clone();
+            } else {
+                return None;
+            }
+            if !self.expect_peek(TokenKind::Comma) {
+                return None;
+            }
+            self.next_token(); // on v
+            if let TokenKind::Ident(ref v) = self.cur_token.kind.clone() {
+                val_var = Some(v.clone());
+            } else {
+                return None;
+            }
+            if !self.expect_peek(TokenKind::RBracket) {
+                return None;
+            }
+        } else if let TokenKind::Ident(ref name) = self.peek_token.kind.clone() {
             self.next_token();
-            name.clone()
+            var_name = name.clone();
+            // check if followed by comma: for k, v in map
+            if self.peek_token_is(&TokenKind::Comma) {
+                self.next_token(); // on ','
+                self.next_token(); // on v
+                if let TokenKind::Ident(ref v) = self.cur_token.kind.clone() {
+                    val_var = Some(v.clone());
+                } else {
+                    return None;
+                }
+            }
         } else {
             return None;
-        };
+        }
 
         if !self.expect_peek(TokenKind::In) {
             return None;
@@ -451,6 +485,7 @@ impl Parser {
         let body = self.parse_block_statement();
         Some(Stmt::For {
             var: var_name,
+            val_var,
             iterable,
             body,
             token: tok,
@@ -489,6 +524,34 @@ impl Parser {
                     self.next_token();
                 }
                 return Some(Stmt::Expr(Expr::Assign(var_name, Box::new(val), id_tok)));
+            } else if self.peek_token_is(&TokenKind::PlusPlus) {
+                let id_tok = self.cur_token.clone();
+                let var_name = name.clone();
+                self.next_token(); // on '++'
+                if self.peek_token_is(&TokenKind::Semicolon) {
+                    self.next_token();
+                }
+                let add_expr = Expr::Infix(
+                    Box::new(Expr::Ident(var_name.clone(), id_tok.clone())),
+                    InfixOp::Plus,
+                    Box::new(Expr::Int(1, id_tok.clone())),
+                    id_tok.clone(),
+                );
+                return Some(Stmt::Expr(Expr::Assign(var_name, Box::new(add_expr), id_tok)));
+            } else if self.peek_token_is(&TokenKind::MinusMinus) {
+                let id_tok = self.cur_token.clone();
+                let var_name = name.clone();
+                self.next_token(); // on '--'
+                if self.peek_token_is(&TokenKind::Semicolon) {
+                    self.next_token();
+                }
+                let sub_expr = Expr::Infix(
+                    Box::new(Expr::Ident(var_name.clone(), id_tok.clone())),
+                    InfixOp::Minus,
+                    Box::new(Expr::Int(1, id_tok.clone())),
+                    id_tok.clone(),
+                );
+                return Some(Stmt::Expr(Expr::Assign(var_name, Box::new(sub_expr), id_tok)));
             } else if self.peek_token_is(&TokenKind::PlusAssign) {
                 let id_tok = self.cur_token.clone();
                 let var_name = name.clone();

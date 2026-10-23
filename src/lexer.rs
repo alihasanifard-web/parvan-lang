@@ -77,7 +77,11 @@ impl Lexer {
         let token = match self.ch {
             None => Token::new(TokenKind::Eof, "".to_string(), line, col),
             Some('+') => {
-                if self.peek_char() == Some('=') {
+                if self.peek_char() == Some('+') {
+                    self.read_char();
+                    self.read_char();
+                    Token::new(TokenKind::PlusPlus, "++".to_string(), line, col)
+                } else if self.peek_char() == Some('=') {
                     self.read_char();
                     self.read_char();
                     Token::new(TokenKind::PlusAssign, "+=".to_string(), line, col)
@@ -87,7 +91,11 @@ impl Lexer {
                 }
             }
             Some('-') => {
-                if self.peek_char() == Some('>') {
+                if self.peek_char() == Some('-') {
+                    self.read_char();
+                    self.read_char();
+                    Token::new(TokenKind::MinusMinus, "--".to_string(), line, col)
+                } else if self.peek_char() == Some('>') {
                     self.read_char();
                     self.read_char();
                     Token::new(TokenKind::Arrow, "->".to_string(), line, col)

@@ -11,7 +11,7 @@ use std::io::{self, Write};
 use std::process;
 use std::rc::Rc;
 
-const VERSION: &str = "2.0.0 (Enterprise JIT/VM Edition)";
+const VERSION: &str = "2.2.0 (Next-Gen Ecosystem Edition)";
 
 #[cfg(target_os = "windows")]
 fn set_windows_console_font() {
@@ -81,6 +81,14 @@ fn main() {
         }
         if first_arg == "--init" {
             init_project();
+            return;
+        }
+        if first_arg == "fmt" || first_arg == "--fmt" {
+            if args.len() > 2 {
+                format_file(&args[2]);
+            } else {
+                format_current_dir();
+            }
             return;
         }
         if first_arg == "--install" {
@@ -166,11 +174,77 @@ fn print_help() {
     println!("    parvan                  Interactive Shell / {}", reshape_persian("ورود به محیط تعاملی پروان (REPL)"));
     println!("    parvan <file.prv>       Execute code file / {}", reshape_persian("اجرای فایل کد"));
     println!("    parvan --vm <file.prv>  Run via Bytecode Virtual Machine / {}", reshape_persian("اجرا روی ماشین مجازی بایت‌کد"));
+    println!("    parvan fmt [file.prv]   Format code files / {}", reshape_persian("مرتب‌سازی و فرمت خودکار فایل‌های کد"));
     println!("    parvan --init           Initialize Parvan project / {}", reshape_persian("ایجاد پروژه جدید پروان (Parvan.toml)"));
     println!("    parvan --install <pkg>  Install remote package / {}", reshape_persian("نصب پکیج و کتابخانه جدید"));
     println!("    parvan --version        Display version / {}", reshape_persian("نمایش نسخه"));
     println!("    parvan --help           Show help / {}", reshape_persian("راهنمای دستورات"));
     println!();
+}
+
+fn format_file(path_str: &str) {
+    let content = match fs::read_to_string(path_str) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("{} خطای خواندن فایل '{}': {}", "✖".red(), path_str, e);
+            return;
+        }
+    };
+
+    let mut formatted_lines = Vec::new();
+    let mut indent_level: usize = 0;
+
+    for raw_line in content.lines() {
+        let trimmed = raw_line.trim();
+        if trimmed.is_empty() {
+            formatted_lines.push("".to_string());
+            continue;
+        }
+
+        // Closing braces reduce indent before printing
+        let closing_count = trimmed.chars().filter(|&c| c == '}' || c == ']').count();
+        let opening_count = trimmed.chars().filter(|&c| c == '{' || c == '[').count();
+
+        if trimmed.starts_with('}') || trimmed.starts_with(']') {
+            indent_level = indent_level.saturating_sub(closing_count);
+        }
+
+        let indent = "    ".repeat(indent_level);
+        formatted_lines.push(format!("{}{}", indent, trimmed));
+
+        if !trimmed.starts_with('}') && !trimmed.starts_with(']') {
+            if opening_count > closing_count {
+                indent_level += opening_count - closing_count;
+            } else if closing_count > opening_count {
+                indent_level = indent_level.saturating_sub(closing_count - opening_count);
+            }
+        } else if opening_count > closing_count {
+            indent_level += opening_count - closing_count;
+        }
+    }
+
+    let formatted_content = formatted_lines.join("\n") + "\n";
+    if let Err(e) = fs::write(path_str, formatted_content) {
+        eprintln!("{} خطای نوشتن در فایل '{}': {}", "✖".red(), path_str, e);
+    } else {
+        println!("{} فایل با موفقیت مرتب و فرمت شد: {}", "✓".green(), path_str.cyan());
+    }
+}
+
+fn format_current_dir() {
+    let mut formatted_count = 0;
+    if let Ok(entries) = fs::read_dir(".") {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().map_or(false, |ext| ext == "prv") {
+                if let Some(path_str) = path.to_str() {
+                    format_file(path_str);
+                    formatted_count += 1;
+                }
+            }
+        }
+    }
+    println!("{} مجموعاً {} فایل پروان مرتب‌سازی شدند.", "✓".green(), formatted_count);
 }
 
 fn init_project() {

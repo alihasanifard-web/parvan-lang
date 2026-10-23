@@ -93,6 +93,7 @@ pub enum Stmt {
     },
     For {
         var: String,
+        val_var: Option<String>,
         iterable: Expr,
         body: BlockStmt,
         token: Token,
