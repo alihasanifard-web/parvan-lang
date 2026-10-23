@@ -17,6 +17,16 @@ pub enum Object {
         body: BlockStmt,
         env: Rc<RefCell<Environment>>,
     },
+    Struct {
+        name: String,
+        fields: Vec<String>,
+        methods: HashMap<String, (Vec<String>, BlockStmt, Rc<RefCell<Environment>>)>,
+    },
+    Instance {
+        struct_name: String,
+        fields: Rc<RefCell<HashMap<String, Object>>>,
+        methods: HashMap<String, (Vec<String>, BlockStmt, Rc<RefCell<Environment>>)>,
+    },
     Builtin(fn(Vec<Object>) -> Result<Object, String>),
     ReturnValue(Box<Object>),
     Break,
@@ -74,6 +84,17 @@ impl fmt::Display for Object {
                     .collect();
                 write!(f, "{{{}}}", items.join(", "))
             }
+            Object::Struct { name, fields, .. } => {
+                write!(f, "<struct {}({})>", name, fields.join(", "))
+            }
+            Object::Instance { struct_name, fields, .. } => {
+                let items: Vec<String> = fields
+                    .borrow()
+                    .iter()
+                    .map(|(k, v)| format!("{}: {}", k, v))
+                    .collect();
+                write!(f, "{} {{{}}}", struct_name, items.join(", "))
+            }
         }
     }
 }
@@ -100,6 +121,8 @@ impl Object {
             Object::Array(_) => "Array",
             Object::Map(_) => "Map",
             Object::Function { .. } => "Function",
+            Object::Struct { .. } => "Struct",
+            Object::Instance { .. } => "Instance",
             Object::Builtin(_) => "Builtin",
             Object::ReturnValue(_) => "ReturnValue",
             Object::Break => "Break",

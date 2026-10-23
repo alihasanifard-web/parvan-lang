@@ -28,6 +28,7 @@ pub enum Opcode {
     OpJump,
     OpJumpIfFalse,
     OpReturn,
+    OpCall,
 }
 
 #[derive(Debug, Clone, PartialEq)]

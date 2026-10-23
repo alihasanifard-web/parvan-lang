@@ -218,7 +218,7 @@ impl Lexer {
                 self.read_char();
                 Token::new(TokenKind::RBracket, "]".to_string(), line, col)
             }
-            Some('"') => self.read_string(line, col),
+            Some('"') | Some('\'') => self.read_string(line, col),
             Some(ch) => {
                 if is_letter(ch) {
                     self.read_identifier_or_keyword(line, col)
@@ -265,6 +265,7 @@ impl Lexer {
             "switch" => TokenKind::Switch,
             "case" => TokenKind::Case,
             "default" => TokenKind::Default,
+            "struct" | "class" => TokenKind::Struct,
             "true" => TokenKind::Bool(true),
             "false" => TokenKind::Bool(false),
             "nil" | "null" => TokenKind::Nil,
@@ -288,6 +289,7 @@ impl Lexer {
             "انتخاب" => TokenKind::Switch,
             "حالت" => TokenKind::Case,
             "پیش‌فرض" | "پیش_فرض" => TokenKind::Default,
+            "ساختار" | "کلاس" => TokenKind::Struct,
             "درست" => TokenKind::Bool(true),
             "غلط" => TokenKind::Bool(false),
             "هیچ" => TokenKind::Nil,
@@ -325,11 +327,12 @@ impl Lexer {
     }
 
     fn read_string(&mut self, line: usize, col: usize) -> Token {
+        let quote = self.ch.unwrap_or('"');
         self.read_char(); // skip opening quote
         let mut s = String::new();
 
         while let Some(ch) = self.ch {
-            if ch == '"' {
+            if ch == quote {
                 self.read_char(); // skip closing quote
                 break;
             } else if ch == '\\' {
@@ -339,7 +342,10 @@ impl Lexer {
                     Some('t') => s.push('\t'),
                     Some('r') => s.push('\r'),
                     Some('"') => s.push('"'),
+                    Some('\'') => s.push('\''),
                     Some('\\') => s.push('\\'),
+                    Some('{') => s.push('{'),
+                    Some('}') => s.push('}'),
                     Some(c) => s.push(c),
                     None => break,
                 }

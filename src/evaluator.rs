@@ -139,6 +139,22 @@ pub fn eval_statement(stmt: &Stmt, env: Rc<RefCell<Environment>>) -> Result<Obje
 
             Ok(result)
         }
+        Stmt::Struct { name, fields, methods, .. } => {
+            let mut method_map = std::collections::HashMap::new();
+            for m in methods {
+                method_map.insert(
+                    m.name.clone(),
+                    (m.params.clone(), m.body.clone(), env.clone()),
+                );
+            }
+            let struct_obj = Object::Struct {
+                name: name.clone(),
+                fields: fields.clone(),
+                methods: method_map,
+            };
+            env.borrow_mut().set(name.clone(), struct_obj, false);
+            Ok(Object::Nil)
+        }
     }
 }
 
@@ -234,7 +250,7 @@ pub fn eval_expression(expr: &Expr, env: Rc<RefCell<Environment>>) -> Result<Obj
             eval_index_op(left, idx, tok)
         }
         Expr::Property(left_expr, prop_name, tok) => {
-            let left = eval_expression(left_expr, env)?;
+            let left = eval_expression(left_expr, env.clone())?;
             match left {
                 Object::Map(m) => {
                     let borrowed = m.borrow();
@@ -243,7 +259,41 @@ pub fn eval_expression(expr: &Expr, env: Rc<RefCell<Environment>>) -> Result<Obj
                         None => Ok(Object::Nil),
                     }
                 }
-                _ => Err(format!("دسترسی با نقطه فقط روی دیکشنری (Map) مجاز است در سطر {}", tok.line)),
+                Object::Instance { ref fields, ref methods, ref struct_name } => {
+                    // Check field first
+                    if let Some(val) = fields.borrow().get(prop_name) {
+                        return Ok(val.clone());
+                    }
+                    // Check method: bind self to instance!
+                    if let Some((params, body, def_env)) = methods.get(prop_name) {
+                        let method_env = Rc::new(RefCell::new(Environment::new_enclosed(def_env.clone())));
+                        method_env.borrow_mut().set("self".to_string(), left.clone(), false);
+                        method_env.borrow_mut().set("این".to_string(), left.clone(), false);
+                        method_env.borrow_mut().set("خود".to_string(), left.clone(), false);
+                        return Ok(Object::Function {
+                            params: params.clone(),
+                            body: body.clone(),
+                            env: method_env,
+                        });
+                    }
+                    Err(format!("فیلد یا متد '{}' در ساختار '{}' تعریف نشده است در سطر {}", prop_name, struct_name, tok.line))
+                }
+                _ => Err(format!("دسترسی با نقطه فقط روی دیکشنری یا نمونه ساختار مجاز است در سطر {}", tok.line)),
+            }
+        }
+        Expr::PropertyAssign(left_expr, prop_name, val_expr, tok) => {
+            let left = eval_expression(left_expr, env.clone())?;
+            let val = eval_expression(val_expr, env)?;
+            match left {
+                Object::Map(m) => {
+                    m.borrow_mut().insert(prop_name.clone(), val.clone());
+                    Ok(val)
+                }
+                Object::Instance { ref fields, .. } => {
+                    fields.borrow_mut().insert(prop_name.clone(), val.clone());
+                    Ok(val)
+                }
+                _ => Err(format!("تغییر ویژگی با نقطه فقط روی دیکشنری یا شیء مجاز است در سطر {}", tok.line)),
             }
         }
         Expr::IndexAssign(left_expr, idx_expr, val_expr, tok) => {
@@ -441,6 +491,23 @@ fn eval_index_op(left: Object, index: Object, tok: &crate::token::Token) -> Resu
 fn apply_function(func: Object, args: Vec<Object>, tok: &crate::token::Token) -> Result<Object, String> {
     match func {
         Object::Builtin(builtin) => builtin(args).map_err(|e| format!("خطا در تابع در سطر {}: {}", tok.line, e)),
+        Object::Struct { name, fields, methods } => {
+            if fields.len() != args.len() {
+                return Err(format!(
+                    "خطا در ایجاد نمونه ساختار '{}' در سطر {}: انتظار {} فیلد ({}) می‌رفت اما {} آرگومان داده شد.",
+                    name, tok.line, fields.len(), fields.join(", "), args.len()
+                ));
+            }
+            let mut field_map = std::collections::HashMap::new();
+            for (field_name, arg_val) in fields.iter().zip(args.into_iter()) {
+                field_map.insert(field_name.clone(), arg_val);
+            }
+            Ok(Object::Instance {
+                struct_name: name,
+                fields: Rc::new(RefCell::new(field_map)),
+                methods,
+            })
+        }
         Object::Function { params, body, env } => {
             if params.len() != args.len() {
                 return Err(format!(

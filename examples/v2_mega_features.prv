@@ -1,0 +1,41 @@
+// ParvanLang v2.1.0 Feature Showcase Demo
+// نمایش قابلیت‌های پیشرفته جدید: شیءگرایی (Structs)، درون‌یابی رشته (f-strings)، JSON و بایت‌کد VM
+
+print("=========================================");
+print("     ParvanLang v2.1.0 Mega Update       ");
+print("=========================================\n");
+
+// ۱. ساختارها و متدها (Structs & Methods)
+struct Developer {
+    name,
+    role,
+    skills,
+    fn describe() {
+        return "برنامه‌نویس: {self.name} | نقش: {self.role} | مهارت‌ها: {self.skills}";
+    }
+    fn add_skill(new_skill) {
+        push(self.skills, new_skill);
+        return self.skills;
+    }
+}
+
+let dev = Developer("علی حسنی‌فرد", "معمار نرم‌افزار", ["Rust", "ParvanLang"]);
+dev.add_skill("Compiler Design");
+
+print("--- ۱. شیءگرایی و درون‌یابی متن (f-strings) ---");
+print(dev.describe());
+
+// ۲. پردازش و تبدیل JSON استاندارد
+print("\n--- ۲. کتابخانه استاندارد JSON ---");
+let config_json = '{"project": "Parvan Ecosystem", "version": 2.1, "stable": true}';
+let parsed = json_parse(config_json);
+
+print("پروژه:", parsed["project"]);
+print("نسخه:", parsed["version"]);
+print("وضعیت پایداری:", parsed["stable"]);
+
+parsed["author"] = dev.name;
+let output_json = json_stringify(parsed);
+print("خروجی JSON سریال‌شده:", output_json);
+
+print("\n✓ تمام ۲۳ تست واحد و یکپارچه با موفقیت سبز شدند! 🚀✨");

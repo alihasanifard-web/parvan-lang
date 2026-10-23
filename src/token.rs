@@ -66,6 +66,7 @@ pub enum TokenKind {
     Switch,     // switch / انتخاب
     Case,       // case / حالت
     Default,    // default / پیش‌فرض
+    Struct,     // struct / ساختار
 }
 
 #[derive(Debug, Clone, PartialEq)]

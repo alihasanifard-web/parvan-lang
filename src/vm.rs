@@ -37,7 +37,11 @@ impl Vm {
                 x if x == Opcode::OpAdd as u8 => self.execute_binary_op(|a, b| match (a, b) {
                     (Object::Int(x), Object::Int(y)) => Ok(Object::Int(x + y)),
                     (Object::Float(x), Object::Float(y)) => Ok(Object::Float(x + y)),
+                    (Object::Int(x), Object::Float(y)) => Ok(Object::Float(x as f64 + y)),
+                    (Object::Float(x), Object::Int(y)) => Ok(Object::Float(x + y as f64)),
                     (Object::Str(x), Object::Str(y)) => Ok(Object::Str(format!("{}{}", x, y))),
+                    (Object::Str(x), other) => Ok(Object::Str(format!("{}{}", x, other))),
+                    (other, Object::Str(y)) => Ok(Object::Str(format!("{}{}", other, y))),
                     _ => Err("Unsupported types for Add".to_string()),
                 })?,
                 x if x == Opcode::OpSub as u8 => self.execute_binary_op(|a, b| match (a, b) {
@@ -90,6 +94,18 @@ impl Vm {
                 x if x == Opcode::OpTrue as u8 => self.push(Object::Bool(true))?,
                 x if x == Opcode::OpFalse as u8 => self.push(Object::Bool(false))?,
                 x if x == Opcode::OpNil as u8 => self.push(Object::Nil)?,
+                x if x == Opcode::OpMinus as u8 => {
+                    let val = self.pop()?;
+                    match val {
+                        Object::Int(i) => self.push(Object::Int(-i))?,
+                        Object::Float(f) => self.push(Object::Float(-f))?,
+                        _ => return Err("Unary minus requires a numeric operand in VM".to_string()),
+                    }
+                }
+                x if x == Opcode::OpBang as u8 => {
+                    let val = self.pop()?;
+                    self.push(Object::Bool(!val.is_truthy()))?;
+                }
                 x if x == Opcode::OpSetGlobal as u8 => {
                     let global_idx = self.read_u16() as usize;
                     let val = self.pop()?;
@@ -113,6 +129,25 @@ impl Vm {
                 }
                 x if x == Opcode::OpReturn as u8 => {
                     return Ok(self.pop().unwrap_or(Object::Nil));
+                }
+                x if x == Opcode::OpCall as u8 => {
+                    let num_args = self.instructions[self.ip] as usize;
+                    self.ip += 1;
+
+                    let callee = self.pop()?;
+                    let mut args = Vec::with_capacity(num_args);
+                    for _ in 0..num_args {
+                        args.push(self.pop()?);
+                    }
+                    args.reverse();
+
+                    match callee {
+                        Object::Builtin(builtin) => {
+                            let result = builtin(args)?;
+                            self.push(result)?;
+                        }
+                        other => return Err(format!("Callable object of type '{}' not yet supported on VM", other.type_name())),
+                    }
                 }
                 unknown => return Err(format!("Unknown opcode byte: {}", unknown)),
             }

@@ -124,8 +124,81 @@ impl Parser {
             TokenKind::Import => self.parse_import_statement(),
             TokenKind::Try => self.parse_try_catch_statement(),
             TokenKind::Switch => self.parse_switch_statement(),
+            TokenKind::Struct => self.parse_struct_statement(),
             _ => self.parse_expression_statement(),
         }
+    }
+
+    fn parse_struct_statement(&mut self) -> Option<Stmt> {
+        let tok = self.cur_token.clone();
+        self.next_token(); // on struct name
+
+        let name = if let TokenKind::Ident(ref n) = self.cur_token.kind {
+            n.clone()
+        } else {
+            self.errors.push(format!("انتظار نام ساختار بعد از کلیدواژه struct در سطر {}", self.cur_token.line));
+            return None;
+        };
+
+        if !self.expect_peek(TokenKind::LBrace) {
+            return None;
+        }
+
+        self.next_token(); // on first item inside '{'
+
+        let mut fields = Vec::new();
+        let mut methods = Vec::new();
+
+        while !self.cur_token_is(&TokenKind::RBrace) && !self.cur_token_is(&TokenKind::Eof) {
+            if self.cur_token_is(&TokenKind::Fn) {
+                // Parse method: fn method_name(params) { body }
+                let fn_tok = self.cur_token.clone();
+                self.next_token(); // on method name
+                let m_name = if let TokenKind::Ident(ref mn) = self.cur_token.kind {
+                    mn.clone()
+                } else {
+                    self.errors.push(format!("انتظار نام متد در سطر {}", self.cur_token.line));
+                    return None;
+                };
+
+                if !self.expect_peek(TokenKind::LParen) {
+                    return None;
+                }
+
+                let params = self.parse_function_params()?;
+
+                if !self.expect_peek(TokenKind::LBrace) {
+                    return None;
+                }
+
+                let body = self.parse_block_statement();
+                methods.push(crate::ast::StructMethod {
+                    name: m_name,
+                    params,
+                    body,
+                    token: fn_tok,
+                });
+            } else if let TokenKind::Ident(ref field_name) = self.cur_token.kind.clone() {
+                fields.push(field_name.clone());
+                if self.peek_token_is(&TokenKind::Comma) {
+                    self.next_token();
+                } else if self.peek_token_is(&TokenKind::Semicolon) {
+                    self.next_token();
+                }
+            } else {
+                self.errors.push(format!("عنصر نامعتبر درون تعریف ساختار در سطر {}", self.cur_token.line));
+                return None;
+            }
+
+            self.next_token();
+        }
+
+        Some(Stmt::Struct {
+            name,
+            fields,
+            methods,
+            token: tok,
+        })
     }
 
     fn parse_switch_statement(&mut self) -> Option<Stmt> {
@@ -470,6 +543,24 @@ impl Parser {
                 )));
             }
         }
+
+        // Check for property assignment: obj.prop = val;
+        if let Expr::Property(left, prop, tok) = &expr {
+            if self.peek_token_is(&TokenKind::Assign) {
+                self.next_token(); // on '='
+                self.next_token(); // on start of right expr
+                let val = self.parse_expression(Precedence::Lowest)?;
+                if self.peek_token_is(&TokenKind::Semicolon) {
+                    self.next_token();
+                }
+                return Some(Stmt::Expr(Expr::PropertyAssign(
+                    left.clone(),
+                    prop.clone(),
+                    Box::new(val),
+                    tok.clone(),
+                )));
+            }
+        }
         if self.peek_token_is(&TokenKind::Semicolon) {
             self.next_token();
         }
@@ -543,7 +634,15 @@ impl Parser {
             TokenKind::Ident(name) => Some(Expr::Ident(name.clone(), self.cur_token.clone())),
             TokenKind::Int(val) => Some(Expr::Int(*val, self.cur_token.clone())),
             TokenKind::Float(val) => Some(Expr::Float(*val, self.cur_token.clone())),
-            TokenKind::Str(val) => Some(Expr::Str(val.clone(), self.cur_token.clone())),
+            TokenKind::Str(val) => {
+                let s = val.clone();
+                let tok = self.cur_token.clone();
+                if s.contains('{') && s.contains('}') {
+                    self.parse_interpolated_string(&s, tok)
+                } else {
+                    Some(Expr::Str(s, tok))
+                }
+            }
             TokenKind::Bool(val) => Some(Expr::Bool(*val, self.cur_token.clone())),
             TokenKind::Nil => Some(Expr::Nil(self.cur_token.clone())),
             TokenKind::Bang => {
@@ -764,6 +863,108 @@ impl Parser {
             self.peek_token = clone_peek;
             None
         }
+    }
+
+    fn parse_interpolated_string(&mut self, s: &str, tok: Token) -> Option<Expr> {
+        let mut segments: Vec<Expr> = Vec::new();
+        let mut cur_literal = String::new();
+        let mut chars = s.chars().peekable();
+        let mut has_interpolation = false;
+
+        while let Some(ch) = chars.next() {
+            if ch == '{' {
+                // If escaped {{, treat as literal {
+                if chars.peek() == Some(&'{') {
+                    chars.next();
+                    cur_literal.push('{');
+                    continue;
+                }
+
+                // Check if this looks like a valid expression identifier or calculation
+                // If it starts with a quote, e.g. {"name": ...}, it's JSON or a literal object string, not interpolation!
+                let next_ch = chars.peek().copied();
+                if next_ch == Some('"') || next_ch == Some('\'') {
+                    cur_literal.push('{');
+                    continue;
+                }
+                let mut expr_str = String::new();
+                let mut brace_depth = 1;
+                let mut found_closing = false;
+                while let Some(c) = chars.next() {
+                    if c == '{' {
+                        brace_depth += 1;
+                        expr_str.push(c);
+                    } else if c == '}' {
+                        brace_depth -= 1;
+                        if brace_depth == 0 {
+                            found_closing = true;
+                            break;
+                        } else {
+                            expr_str.push(c);
+                        }
+                    } else {
+                        expr_str.push(c);
+                    }
+                }
+
+                if !found_closing {
+                    // Not a closed interpolation, treat as literal
+                    cur_literal.push('{');
+                    cur_literal.push_str(&expr_str);
+                    continue;
+                }
+
+                let trimmed = expr_str.trim();
+                // Try parsing trimmed as an expression
+                let sub_lexer = crate::lexer::Lexer::new(trimmed);
+                let mut sub_parser = Parser::new(sub_lexer);
+                if let Some(parsed_expr) = sub_parser.parse_expression(Precedence::Lowest) {
+                    if sub_parser.errors.is_empty() {
+                        if !cur_literal.is_empty() {
+                            segments.push(Expr::Str(cur_literal.clone(), tok.clone()));
+                            cur_literal.clear();
+                        }
+                        has_interpolation = true;
+                        segments.push(parsed_expr);
+                        continue;
+                    }
+                }
+
+                // If parsing failed (e.g. JSON syntax like {"name": ...}), treat as literal!
+                cur_literal.push('{');
+                cur_literal.push_str(&expr_str);
+                cur_literal.push('}');
+            } else if ch == '}' && chars.peek() == Some(&'}') {
+                chars.next();
+                cur_literal.push('}');
+            } else {
+                cur_literal.push(ch);
+            }
+        }
+
+        if !has_interpolation {
+            return Some(Expr::Str(s.to_string(), tok));
+        }
+
+        if !cur_literal.is_empty() {
+            segments.push(Expr::Str(cur_literal, tok.clone()));
+        }
+
+        if segments.is_empty() {
+            return Some(Expr::Str("".to_string(), tok));
+        }
+
+        let mut res = segments.remove(0);
+        for next_expr in segments {
+            res = Expr::Infix(
+                Box::new(res),
+                crate::ast::InfixOp::Plus,
+                Box::new(next_expr),
+                tok.clone(),
+            );
+        }
+
+        Some(res)
     }
 
     fn parse_function_literal(&mut self) -> Option<Expr> {

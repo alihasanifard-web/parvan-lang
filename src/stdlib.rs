@@ -13,7 +13,7 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "time" | "زمان" => Some(Object::Builtin(builtin_time)),
         "type" | "نوع" => Some(Object::Builtin(builtin_type)),
         "to_int" | "به_عدد" => Some(Object::Builtin(builtin_to_int)),
-        "to_str" | "به_متن" => Some(Object::Builtin(builtin_to_str)),
+        "to_str" | "به_متن" | "به_رشته" => Some(Object::Builtin(builtin_to_str)),
         "abs" | "قدر_مطلق" => Some(Object::Builtin(builtin_abs)),
         "sqrt" | "جذر" => Some(Object::Builtin(builtin_sqrt)),
         "keys" | "کلیدها" => Some(Object::Builtin(builtin_keys)),
@@ -42,6 +42,8 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "msgbox" | "جعبه_پیام" => Some(Object::Builtin(builtin_msgbox)),
         "random" | "تصادفی" => Some(Object::Builtin(builtin_random)),
         "sleep" | "صبر" => Some(Object::Builtin(builtin_sleep)),
+        "json_stringify" | "متن_جیسون" => Some(Object::Builtin(builtin_json_stringify)),
+        "json_parse" | "پارس_جیسون" => Some(Object::Builtin(builtin_json_parse)),
         _ => None,
     }
 }
@@ -712,4 +714,233 @@ fn builtin_sleep(args: Vec<Object>) -> Result<Object, String> {
     };
     std::thread::sleep(std::time::Duration::from_millis(ms));
     Ok(Object::Nil)
+}
+
+fn builtin_json_stringify(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع json_stringify نیازمند ۱ آرگومان است.".to_string());
+    }
+    fn stringify_val(val: &Object) -> String {
+        match val {
+            Object::Int(n) => n.to_string(),
+            Object::Float(f) => f.to_string(),
+            Object::Str(s) => format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n").replace('\t', "\\t")),
+            Object::Bool(b) => if *b { "true".to_string() } else { "false".to_string() },
+            Object::Nil => "null".to_string(),
+            Object::Array(arr) => {
+                let items: Vec<String> = arr.borrow().iter().map(stringify_val).collect();
+                format!("[{}]", items.join(","))
+            }
+            Object::Map(m) => {
+                let items: Vec<String> = m
+                    .borrow()
+                    .iter()
+                    .map(|(k, v)| format!("\"{}\":{}", k.replace('"', "\\\""), stringify_val(v)))
+                    .collect();
+                format!("{{{}}}", items.join(","))
+            }
+            Object::Instance { fields, .. } => {
+                let items: Vec<String> = fields
+                    .borrow()
+                    .iter()
+                    .map(|(k, v)| format!("\"{}\":{}", k.replace('"', "\\\""), stringify_val(v)))
+                    .collect();
+                format!("{{{}}}", items.join(","))
+            }
+            _ => "\"<non-serializable>\"".to_string(),
+        }
+    }
+
+    Ok(Object::Str(stringify_val(&args[0])))
+}
+
+fn builtin_json_parse(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع json_parse نیازمند ۱ رشته جیسون است.".to_string());
+    }
+    let s = match &args[0] {
+        Object::Str(text) => text.as_str(),
+        _ => return Err("آرگومان ورودی json_parse باید رشته باشد.".to_string()),
+    };
+
+    let mut chars = s.chars().peekable();
+    parse_json_value(&mut chars)
+}
+
+fn skip_json_ws(chars: &mut std::iter::Peekable<std::str::Chars>) {
+    while let Some(&c) = chars.peek() {
+        if c.is_whitespace() {
+            chars.next();
+        } else {
+            break;
+        }
+    }
+}
+
+fn parse_json_value(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<Object, String> {
+    skip_json_ws(chars);
+    match chars.peek().copied() {
+        Some('{') => parse_json_object(chars),
+        Some('[') => parse_json_array(chars),
+        Some('"') | Some('\'') => parse_json_string(chars),
+        Some('t') | Some('f') => parse_json_bool(chars),
+        Some('n') => parse_json_null(chars),
+        Some(c) if c.is_ascii_digit() || c == '-' => parse_json_number(chars),
+        Some(c) => Err(format!("کاراکتر غیرمنتظره در جیسون: '{}'", c)),
+        None => Err("پایان غیرمنتظره متن جیسون".to_string()),
+    }
+}
+
+fn parse_json_string(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<Object, String> {
+    let quote_ch = match chars.peek() {
+        Some(&'"') => '"',
+        Some(&'\'') => '\'',
+        _ => '"',
+    };
+    chars.next(); // skip opening quote
+    let mut s = String::new();
+    while let Some(c) = chars.next() {
+        if c == quote_ch {
+            return Ok(Object::Str(s));
+        } else if c == '\\' {
+            match chars.next() {
+                Some('n') => s.push('\n'),
+                Some('t') => s.push('\t'),
+                Some('r') => s.push('\r'),
+                Some('"') => s.push('"'),
+                Some('\'') => s.push('\''),
+                Some('\\') => s.push('\\'),
+                Some(other) => s.push(other),
+                None => return Err("انتهای ناقص کاراکتر فرار در رشته جیسون".to_string()),
+            }
+        } else {
+            s.push(c);
+        }
+    }
+    Err("رشته بسته نشده در جیسون".to_string())
+}
+
+fn parse_json_number(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<Object, String> {
+    let mut num_str = String::new();
+    let mut is_float = false;
+    while let Some(&c) = chars.peek() {
+        if c.is_ascii_digit() || c == '-' || c == '+' {
+            num_str.push(c);
+            chars.next();
+        } else if c == '.' {
+            is_float = true;
+            num_str.push(c);
+            chars.next();
+        } else if c == 'e' || c == 'E' {
+            is_float = true;
+            num_str.push(c);
+            chars.next();
+        } else {
+            break;
+        }
+    }
+
+    if is_float {
+        let f: f64 = num_str.parse().map_err(|e| format!("خطای عدد اعشاری در جیسون: {}", e))?;
+        Ok(Object::Float(f))
+    } else {
+        let i: i64 = num_str.parse().map_err(|e| format!("خطای عدد صحیح در جیسون: {}", e))?;
+        Ok(Object::Int(i))
+    }
+}
+
+fn parse_json_bool(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<Object, String> {
+    let mut word = String::new();
+    while let Some(&c) = chars.peek() {
+        if c.is_alphabetic() {
+            word.push(c);
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    if word == "true" {
+        Ok(Object::Bool(true))
+    } else if word == "false" {
+        Ok(Object::Bool(false))
+    } else {
+        Err(format!("کلمه بولی نامعتبر در جیسون: {}", word))
+    }
+}
+
+fn parse_json_null(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<Object, String> {
+    let mut word = String::new();
+    while let Some(&c) = chars.peek() {
+        if c.is_alphabetic() {
+            word.push(c);
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    if word == "null" {
+        Ok(Object::Nil)
+    } else {
+        Err(format!("کلمه نامعتبر به جای null در جیسون: {}", word))
+    }
+}
+
+fn parse_json_array(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<Object, String> {
+    chars.next(); // skip '['
+    let mut items = Vec::new();
+    loop {
+        skip_json_ws(chars);
+        if let Some(&']') = chars.peek() {
+            chars.next();
+            break;
+        }
+        let val = parse_json_value(chars)?;
+        items.push(val);
+        skip_json_ws(chars);
+        if let Some(&',') = chars.peek() {
+            chars.next();
+        } else if let Some(&']') = chars.peek() {
+            chars.next();
+            break;
+        } else {
+            return Err("انتظار ویرگول یا ']' در آرایه جیسون".to_string());
+        }
+    }
+    Ok(Object::Array(std::rc::Rc::new(std::cell::RefCell::new(items))))
+}
+
+fn parse_json_object(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<Object, String> {
+    chars.next(); // skip '{'
+    let mut map = std::collections::HashMap::new();
+    loop {
+        skip_json_ws(chars);
+        if let Some(&'}') = chars.peek() {
+            chars.next();
+            break;
+        }
+        skip_json_ws(chars);
+        let key_obj = parse_json_value(chars)?;
+        let key_str = match key_obj {
+            Object::Str(s) => s,
+            other => other.to_string(),
+        };
+        skip_json_ws(chars);
+        if chars.peek() != Some(&':') {
+            return Err("انتظار ':' بعد از کلید در شیء جیسون".to_string());
+        }
+        chars.next(); // skip ':'
+        let val_obj = parse_json_value(chars)?;
+        map.insert(key_str, val_obj);
+
+        skip_json_ws(chars);
+        if let Some(&',') = chars.peek() {
+            chars.next();
+        } else if let Some(&'}') = chars.peek() {
+            chars.next();
+            break;
+        } else {
+            return Err("انتظار ویرگول یا '}' در شیء جیسون".to_string());
+        }
+    }
+    Ok(Object::Map(std::rc::Rc::new(std::cell::RefCell::new(map))))
 }

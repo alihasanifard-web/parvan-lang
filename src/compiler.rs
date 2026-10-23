@@ -151,9 +151,23 @@ impl Compiler {
                     self.emit(Opcode::OpGetGlobal);
                     self.emit_u16(idx);
                     Ok(())
+                } else if let Some(builtin) = crate::stdlib::get_builtin(name) {
+                    let const_idx = self.add_constant(builtin);
+                    self.emit(Opcode::OpConstant);
+                    self.emit_u16(const_idx);
+                    Ok(())
                 } else {
                     Err(format!("Undefined variable '{}' at line {}", name, tok.line))
                 }
+            }
+            Expr::Call(func_expr, args, _) => {
+                for arg in args {
+                    self.compile_expression(arg)?;
+                }
+                self.compile_expression(func_expr)?;
+                self.emit(Opcode::OpCall);
+                self.instructions.push(args.len() as u8);
+                Ok(())
             }
             Expr::Infix(left, op, right, _) => {
                 self.compile_expression(left)?;

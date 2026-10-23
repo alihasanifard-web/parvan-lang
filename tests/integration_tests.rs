@@ -89,6 +89,30 @@ mod tests {
     }
 
     #[test]
+    fn test_vm_builtin_call_execution() {
+        use parvan::compiler::Compiler;
+        use parvan::vm::Vm;
+        use parvan::lexer::Lexer;
+        use parvan::parser::Parser;
+
+        let input = r#"
+            let a = abs(-42);
+            let b = to_int(sqrt(144));
+            a + b;
+        "#;
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert!(parser.errors.is_empty());
+
+        let mut compiler = Compiler::new();
+        let bytecode = compiler.compile(&program).expect("VM compile failed");
+        let mut vm = Vm::new(bytecode);
+        let res = vm.run().expect("VM run failed");
+        assert_eq!(res, Object::Int(54));
+    }
+
+    #[test]
     fn test_vm_while_loops() {
         use parvan::compiler::Compiler;
         use parvan::vm::Vm;
@@ -134,6 +158,73 @@ mod tests {
         let res = test_eval(r#"
             let r = random(10, 50);
             r >= 10 && r < 50;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
+    fn test_structs_and_methods() {
+        let res = test_eval(r#"
+            struct User {
+                name,
+                score,
+                fn get_info() {
+                    return self.name + ": " + to_str(self.score);
+                }
+                fn add_score(pts) {
+                    self.score = self.score + pts;
+                    return self.score;
+                }
+            }
+
+            let u = User("Ali", 100);
+            let s1 = u.get_info();
+            u.add_score(50);
+            let s2 = u.score;
+            s1 == "Ali: 100" && s2 == 150;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
+    fn test_persian_struct_keywords() {
+        let res = test_eval(r#"
+            ساختار کاربر {
+                نام,
+                امتیاز,
+                تابع گزارش() {
+                    بازگردان این.نام + " - " + به_رشته(این.امتیاز);
+                }
+            }
+
+            متغیر ک = کاربر("احسان", 200);
+            ک.گزارش() == "احسان - 200";
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
+    fn test_string_interpolation() {
+        let res = test_eval(r#"
+            let name = "علی";
+            let score = 95;
+            let msg = "سلام {name}، نمره شما {score + 5} است!";
+            msg == "سلام علی، نمره شما 100 است!";
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
+    fn test_json_parse_and_stringify() {
+        let res = test_eval(r#"
+            let raw_json = "{\"name\": \"Ali\", \"age\": 22, \"active\": true, \"skills\": [\"Rust\", \"Parvan\"]}";
+            let parsed = json_parse(raw_json);
+            let check_name = parsed["name"] == "Ali";
+            let check_age = parsed["age"] == 22;
+            let check_skill = parsed["skills"][0] == "Rust";
+
+            let serialized = json_stringify(parsed);
+            check_name && check_age && check_skill && contains(serialized, "Parvan");
         "#).unwrap();
         assert_eq!(res, Object::Bool(true));
     }

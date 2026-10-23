@@ -38,6 +38,7 @@ pub enum Expr {
     Map(Vec<(Expr, Expr)>, Token),
     Index(Box<Expr>, Box<Expr>, Token),
     Property(Box<Expr>, String, Token),
+    PropertyAssign(Box<Expr>, String, Box<Expr>, Token),
     Assign(String, Box<Expr>, Token),
     IndexAssign(Box<Expr>, Box<Expr>, Box<Expr>, Token),
     Function {
@@ -46,6 +47,14 @@ pub enum Expr {
         body: BlockStmt,
         token: Token,
     },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructMethod {
+    pub name: String,
+    pub params: Vec<String>,
+    pub body: BlockStmt,
+    pub token: Token,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -108,6 +117,12 @@ pub enum Stmt {
         condition: Expr,
         cases: Vec<(Expr, BlockStmt)>,
         default: Option<BlockStmt>,
+        token: Token,
+    },
+    Struct {
+        name: String,
+        fields: Vec<String>,
+        methods: Vec<StructMethod>,
         token: Token,
     },
 }
