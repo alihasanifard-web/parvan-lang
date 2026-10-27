@@ -141,7 +141,7 @@ impl Compiler {
 
                 Ok(())
             }
-            _ => Err("Statement not yet supported in Bytecode compiler".to_string()),
+            _ => Err(format!("Statement not yet supported in Bytecode compiler: {:?}", stmt)),
         }
     }
 
@@ -278,7 +278,7 @@ impl Compiler {
                 };
                 Ok(())
             }
-            _ => Err("Expression not supported in compiler yet".to_string()),
+            _ => Err(format!("Expression not supported in compiler yet: {:?}", expr)),
         }
     }
 

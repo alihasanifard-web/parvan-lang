@@ -148,12 +148,26 @@
     <div class="logo">
       <img src="logo.png" alt="Parvan Logo" />
       <span>ParvanLang Web Playground</span>
-      <span class="badge">v2.7.0</span>
+      <span class="badge">v3.0.0</span>
     </div>
     <div class="controls">
-      <button onclick="runCode()">⚡ اجرا (Run)</button>
+      <select id="sampleSelect" onchange="loadSample(this.value)" style="background: #0f172a; color: #e2e8f0; border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-family: inherit; font-size: 0.82rem; outline: none; cursor: pointer;">
+        <option value="enterprise">کد چندمنظوره (Enterprise)</option>
+        <option value="persian">کد کاملاً فارسی (Bilingual Demo)</option>
+        <option value="fibonacci">دنباله فیبوناچی (Recursion)</option>
+        <option value="math_pipeline">پایپ‌لاین محاسباتی (Pipeline |>)</option>
+      </select>
+      <button onclick="runCode()">⚡ اجرا (Ctrl+Enter)</button>
+      <button id="btnStop" onclick="stopExecution()" style="display:none; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171;">⏹ توقف</button>
+      <button onclick="shareCode()" style="background: rgba(192, 132, 252, 0.2); border: 1px solid #c084fc; color: #c084fc;">🔗 اشتراک‌گذاری</button>
+      <button onclick="clearOutput()" style="background: #334155;">🗑️ پاکسازی</button>
     </div>
   </header>
+
+  <div id="errorPanel" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 8px; padding: 12px 16px; margin: 12px 24px; display: none; color: #f87171; font-size: 12px; font-family: 'JetBrains Mono', monospace; max-height: 150px; overflow-y: auto;">
+    <div style="font-weight: 600; color: #fca5a5; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">⚠ خطاهای کامپایل</div>
+    <div id="errorList"></div>
+  </div>
 
   <main>
     <div class="pane">
@@ -204,23 +218,250 @@ print("تاریخ جاری:", today);
 
   <footer>
     <span>توسعه‌یافته توسط تیم پروان: علی حسنی‌فرد، احسان فضلی‌نژاد، امیرمهدی شهبازی</span>
-    <span>Parvan Core Team © 2026</span>
+    <span id="telemetryBadge" style="font-family: 'JetBrains Mono'; color: var(--primary);">Parvan Core Team © 2026</span>
   </footer>
 
-  <script>
-    function runCode() {
-      const code = document.getElementById('editor').value;
-      const out = document.getElementById('output');
-      out.textContent = "Compiling and evaluating ParvanLang code...\n\n";
+  <div id="toast" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: #0f172a; border: 1px solid var(--accent); color: #f8fafc; padding: 10px 22px; border-radius: 8px; font-size: 0.88rem; box-shadow: 0 8px 30px rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: all 0.3s ease; z-index: 1000;">لینک اشتراک‌گذاری کپی شد! 🚀</div>
 
+  <script>
+    const SAMPLES = {
+      enterprise: `// ParvanLang v3.0.0 - Interactive Playground
+let app_name = "Parvan";
+let version = "3.0.0";
+
+fn greet(user) {
+    return "درود، " + user + "! به پروان‌لنگ خوش آمدید.";
+}
+
+print(greet("علی حسنی‌فرد"));
+
+let items = [10, 20, 30, 40];
+let total = 0;
+let i = 0;
+while i < len(items) {
+    total = total + items[i];
+    i = i + 1;
+}
+print("مجموع آیتم‌ها:", total);
+
+let today = to_jalali(2026, 10, 27);
+print("تاریخ جاری خورشیدی:", today);`,
+
+      persian: `// برنامه نویسی به زبان فارسی در پروان
+متغیر نام = "پروان";
+متغیر امتیاز = 95;
+
+چاپ("سامانه رسمی زبان", نام);
+
+اگر امتیاز >= 90 {
+    چاپ("وضعیت دانشجو: ممتاز و عالی!");
+} وگرنه {
+    چاپ("وضعیت: در حال تلاش");
+}
+
+متغیر شمارنده = 1;
+حلقه شمارنده <= 5 {
+    چاپ("گام شماره:", شمارنده);
+    شمارنده = شمارنده + 1;
+}
+
+چاپ("عملیات با موفقیت پایان یافت.");`,
+
+      fibonacci: `// محاسبه دنباله فیبوناچی
+fn fib(n) {
+    if n <= 1 {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+print("محاسبه اعداد فیبوناچی:");
+let n = 0;
+while n <= 10 {
+    print("fib(" + str(n) + ") =", fib(n));
+    n = n + 1;
+}`,
+
+      math_pipeline: `// عملگر خط لوله (Pipeline) و محاسبات ریاضی
+fn square(x) { return x * x; }
+fn add_ten(x) { return x + 10; }
+fn double_val(x) { return x * 2; }
+
+let result = 5 |> square |> add_ten |> double_val;
+print("نتیجه پایپ‌لاین (5^2 + 10) * 2 =", result);
+
+let radius = 7;
+let area = 3.14159 * square(radius);
+print("مساحت دایره با شعاع 7 =", round(area, 2));`
+    };
+
+    function loadSample(key) {
+      if (SAMPLES[key]) {
+        document.getElementById('editor').value = SAMPLES[key];
+      }
+    }
+
+    let isExecutionCancelled = false;
+
+    function stopExecution() {
+      isExecutionCancelled = true;
+      document.getElementById('btnStop').style.display = 'none';
+      const out = document.getElementById('output');
+      out.textContent += '\n\n⏹ اجرای اسکریپت توسط کاربر متوقف شد.';
+      out.style.color = '#f87171';
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
       setTimeout(() => {
-        let lines = [];
-        lines.push("کاربر: علی حسنی‌فرد (معمار سیستم)");
-        lines.push("وضعیت: مجاز - دسترسی کامل فعال است");
-        lines.push("تاریخ جاری: 1405/8/2");
-        lines.push("\nFinished Process finished with exit code 0.");
-        out.textContent = lines.join("\n");
-      }, 100);
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(20px)';
+      }, 2500);
+    }
+
+    function shareCode() {
+      const code = document.getElementById('editor').value;
+      const b64 = btoa(encodeURIComponent(code));
+      window.location.hash = 'code=' + b64;
+      const shareUrl = window.location.href;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          showToast('لینک اشتراک‌گذاری در کلیپ‌بورد کپی شد! 🚀');
+        }).catch(() => {
+          showToast('لینک ساخته شد (در آدرس‌بار قرار گرفت)');
+        });
+      } else {
+        showToast('لینک ساخته شد (در آدرس‌بار قرار گرفت)');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes('#code=')) {
+        try {
+          const raw = hash.split('#code=')[1];
+          const decoded = decodeURIComponent(atob(raw));
+          if (decoded.trim()) {
+            document.getElementById('editor').value = decoded;
+            showToast('کد به اشتراک گذاشته شده بارگذاری شد.');
+          }
+        } catch (e) {}
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runCode();
+      }
+    });
+
+    function clearOutput() {
+      const out = document.getElementById('output');
+      out.textContent = '';
+      out.style.color = 'var(--primary)';
+      document.getElementById('telemetryBadge').textContent = 'Parvan Core Team © 2026';
+    }
+
+    function to_jalali(gy, gm, gd) {
+      const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+      let gy2 = (gm > 2) ? (gy) : (gy - 1);
+      let days = 355666 + (365 * gy) + Math.floor((gy2 + 3) / 4) - Math.floor((gy2 + 99) / 100) + Math.floor((gy2 + 399) / 400) + gd + g_d_m[gm - 1];
+      let jy = -1595 + (33 * Math.floor(days / 12053));
+      days %= 12053;
+      jy += 4 * Math.floor(days / 1461);
+      days %= 1461;
+      if (days > 365) {
+        jy += Math.floor((days - 1) / 365);
+        days = (days - 1) % 365;
+      }
+      let jm = (days < 186) ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30);
+      let jd = 1 + ((days < 186) ? (days % 31) : ((days - 186) % 30));
+      return jy + '/' + String(jm).padStart(2, '0') + '/' + String(jd).padStart(2, '0');
+    }
+
+    function runCode() {
+      const rawCode = document.getElementById('editor').value;
+      const out = document.getElementById('output');
+      const btnStop = document.getElementById('btnStop');
+      const telemetry = document.getElementById('telemetryBadge');
+
+      isExecutionCancelled = false;
+      btnStop.style.display = 'inline-flex';
+      out.style.color = '#38bdf8';
+      out.textContent = 'Executing ParvanLang script...\n\n';
+
+      const startTime = performance.now();
+      let outputLines = [];
+
+      const env = {
+        print: (...args) => outputLines.push(args.map(formatObj).join(' ')),
+        چاپ: (...args) => outputLines.push(args.map(formatObj).join(' ')),
+        len: (v) => (v && v.length !== undefined) ? v.length : 0,
+        str: (v) => String(v),
+        int: (v) => parseInt(v, 10) || 0,
+        round: (v, dec) => dec ? Number(v.toFixed(dec)) : Math.round(v),
+        to_jalali: to_jalali,
+        sqrt: Math.sqrt,
+        abs: Math.abs
+      };
+
+      function formatObj(o) {
+        if (typeof o === 'object' && o !== null) {
+          if (Array.isArray(o)) return '[' + o.map(formatObj).join(', ') + ']';
+          return JSON.stringify(o);
+        }
+        return String(o);
+      }
+
+      let jsCode = rawCode;
+      jsCode = jsCode.replace(/\/\/.*$/gm, '');
+
+      jsCode = jsCode.replace(/\bمتغیر\b/g, 'let ');
+      jsCode = jsCode.replace(/\bثابت\b/g, 'const ');
+      jsCode = jsCode.replace(/\bتابع\b/g, 'function ');
+      jsCode = jsCode.replace(/\bاگر\b/g, 'if ');
+      jsCode = jsCode.replace(/\bوگرنه\b/g, 'else ');
+      jsCode = jsCode.replace(/\bحلقه\b/g, 'while ');
+      jsCode = jsCode.replace(/\bبازگردان\b/g, 'return ');
+
+      while (jsCode.includes('|>')) {
+        jsCode = jsCode.replace(/([^;\n]+?)\s*\|>\s*(\w+)/g, '$2($1)');
+      }
+
+      jsCode = jsCode.replace(/\bfn\s+([a-zA-Z0-9_]+)\s*\(/g, 'function $1(');
+
+      let loopCounter = 0;
+      const MAX_TICKS = 50000;
+      const guardCheck = () => {
+        loopCounter++;
+        if (isExecutionCancelled) throw new Error('Execution cancelled by user (توقف دستی)');
+        if (loopCounter > MAX_TICKS) throw new Error('Execution Timeout Guard: حلقه بیش از حد مجاز طول کشید و متوقف شد.');
+      };
+
+      jsCode = jsCode.replace(/while\s*\((.*?)\)\s*\{/g, 'while ($1) { __guard(); ');
+      jsCode = jsCode.replace(/while\s+([^{]+)\{/g, 'while ($1) { __guard(); ');
+
+      try {
+        const fn = new Function('env', '__guard', 'with (env) { ' + jsCode + ' }');
+        fn(env, guardCheck);
+
+        const duration = (performance.now() - startTime).toFixed(1);
+        outputLines.push(`\n[Process completed in ${duration}ms with exit code 0]`);
+        out.textContent = outputLines.join('\n');
+        out.style.color = '#34d399';
+        telemetry.textContent = `زمان اجرا: ${duration}ms`;
+      } catch (err) {
+        outputLines.push(`\n✖ Runtime Error: ${err.message}`);
+        out.textContent = outputLines.join('\n');
+        out.style.color = '#f87171';
+        telemetry.textContent = 'Execution failed';
+      } finally {
+        btnStop.style.display = 'none';
+      }
     }
   </script>
 </body>

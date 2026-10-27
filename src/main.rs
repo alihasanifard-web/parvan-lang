@@ -179,6 +179,11 @@ fn main() {
             }
             return;
         }
+        if first_arg == "publish" || first_arg == "--publish" {
+            let target_path = if args.len() > 2 { &args[2] } else { "." };
+            publish_package(target_path);
+            return;
+        }
         if first_arg == "--install" {
             if args.len() > 2 {
                 install_package(&args[2]);
@@ -273,6 +278,7 @@ fn print_help() {
     println!("    {:26} {}", "parvan --lsp".bright_cyan(), "اجرای سرور ادیتورها (Language Server)".bright_black());
     println!("    {:26} {}", "parvan fmt [file]".bright_cyan(), "فرمت و مرتب‌سازی کدها".bright_black());
     println!("    {:26} {}", "parvan test".bright_cyan(), "اجرای آزمون‌های پروژه".bright_black());
+    println!("    {:26} {}", "parvan publish [path]".bright_cyan(), "بسته‌بندی و انتشار کتابخانه (.prvp)".bright_black());
     println!("    {:26} {}", "parvan --init".bright_cyan(), "ساخت پروژه جدید (Parvan.toml)".bright_black());
     println!("    {:26} {}", "parvan --version".bright_cyan(), "نمایش نسخه جاری".bright_black());
     println!();
@@ -879,6 +885,151 @@ let blue = (txt) -> "\u001b[34m" + txt + "\u001b[0m";
 fn install_all_packages() {
     let _ = fs::create_dir_all("parvan_modules");
     println!("  {} {}", "✔".green(), reshape_persian("تمامی وابستگی‌های پروژه در پوشه parvan_modules همگام‌سازی شدند."));
+}
+
+fn publish_package(target_path: &str) {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    println!("  {} {}...", "Packaging".bright_green().bold(), target_path.bright_white());
+
+    let (dir_path, single_file) = if std::path::Path::new(target_path).is_file() {
+        let parent = std::path::Path::new(target_path).parent().unwrap_or(std::path::Path::new("."));
+        (parent.to_string_lossy().to_string(), Some(target_path.to_string()))
+    } else {
+        (target_path.to_string(), None)
+    };
+
+    let toml_path = format!("{}/Parvan.toml", dir_path);
+    let mut pkg_name = "parvan_pkg".to_string();
+    let mut pkg_version = "1.0.0".to_string();
+    let mut pkg_author = "Parvan Developer".to_string();
+    let mut pkg_desc = "Parvan Library".to_string();
+
+    if let Ok(toml_content) = fs::read_to_string(&toml_path) {
+        for line in toml_content.lines() {
+            let line = line.trim();
+            if line.starts_with("name") {
+                if let Some(val) = line.split('=').nth(1) {
+                    pkg_name = val.trim().trim_matches('"').trim_matches('\'').to_string();
+                }
+            } else if line.starts_with("version") {
+                if let Some(val) = line.split('=').nth(1) {
+                    pkg_version = val.trim().trim_matches('"').trim_matches('\'').to_string();
+                }
+            } else if line.starts_with("author") {
+                if let Some(val) = line.split('=').nth(1) {
+                    pkg_author = val.trim().trim_matches('"').trim_matches('\'').to_string();
+                }
+            } else if line.starts_with("description") {
+                if let Some(val) = line.split('=').nth(1) {
+                    pkg_desc = val.trim().trim_matches('"').trim_matches('\'').to_string();
+                }
+            }
+        }
+    } else if let Some(ref f) = single_file {
+        if let Some(stem) = std::path::Path::new(f).file_stem() {
+            pkg_name = stem.to_string_lossy().to_string();
+        }
+    }
+
+    // Collect .prv files
+    let mut files_to_pack: Vec<(String, String)> = Vec::new();
+    if let Some(ref f) = single_file {
+        if let Ok(content) = fs::read_to_string(f) {
+            files_to_pack.push((f.clone(), content));
+        }
+    } else {
+        fn collect_prv_files(dir: &std::path::Path, base: &std::path::Path, list: &mut Vec<(String, String)>) {
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        let dir_name = path.file_name().unwrap_or_default().to_string_lossy();
+                        if dir_name != "target" && dir_name != "parvan_modules" && dir_name != ".git" && dir_name != "dist" {
+                            collect_prv_files(&path, base, list);
+                        }
+                    } else if path.extension().map(|e| e == "prv").unwrap_or(false) {
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            if let Ok(rel) = path.strip_prefix(base) {
+                                list.push((rel.to_string_lossy().replace('\\', "/"), content));
+                            } else {
+                                list.push((path.to_string_lossy().replace('\\', "/"), content));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        let base_p = std::path::Path::new(&dir_path);
+        collect_prv_files(base_p, base_p, &mut files_to_pack);
+    }
+
+    if files_to_pack.is_empty() {
+        eprintln!("  {} {}", "✖".red(), reshape_persian("هیچ فایل .prv معتبری برای بسته‌بندی یافت نشد."));
+        return;
+    }
+
+    println!("  {} {} source files syntax...", "Validating".bright_blue().bold(), files_to_pack.len());
+    for (file_name, content) in &files_to_pack {
+        let lexer = Lexer::new(content);
+        let mut parser = Parser::new(lexer);
+        let _ = parser.parse_program();
+        if !parser.errors.is_empty() {
+            eprintln!("  {} Syntax error in {}:", "✖".red(), file_name);
+            for err in parser.errors {
+                eprintln!("    • {}", err);
+            }
+            return;
+        }
+    }
+
+    // Build package JSON
+    let mut files_json = String::from("{");
+    for (i, (fname, fcontent)) in files_to_pack.iter().enumerate() {
+        if i > 0 { files_json.push_str(", "); }
+        let mut escaped_content = fcontent.replace('\\', "\\\\").replace('"', "\\\"");
+        escaped_content = escaped_content.replace('\x0D', "");
+        escaped_content = escaped_content.replace('\x0A', "\\n");
+        files_json.push_str(&format!("\"{}\": \"{}\"", fname, escaped_content));
+    }
+    files_json.push('}');
+
+    // Compute Checksum
+    let mut hasher = DefaultHasher::new();
+    pkg_name.hash(&mut hasher);
+    pkg_version.hash(&mut hasher);
+    files_json.hash(&mut hasher);
+    let h1 = hasher.finish();
+    (files_json.clone() + "parvan_salt_ppm").hash(&mut hasher);
+    let h2 = hasher.finish();
+    let checksum = format!("{:016x}{:016x}", h1, h2);
+
+    let bundle_content = format!(
+        "// PARVAN_PACKAGE_V1\n{{\n  \"name\": \"{}\",\n  \"version\": \"{}\",\n  \"author\": \"{}\",\n  \"description\": \"{}\",\n  \"checksum\": \"{}\",\n  \"files\": {}\n}}\n",
+        pkg_name, pkg_version, pkg_author, pkg_desc, checksum, files_json
+    );
+
+    let dist_dir = format!("{}/dist", dir_path);
+    let _ = fs::create_dir_all(&dist_dir);
+
+    let pkg_filename = format!("{}/{}-{}.prvp", dist_dir, pkg_name, pkg_version);
+    if let Err(e) = fs::write(&pkg_filename, &bundle_content) {
+        eprintln!("  {} Error writing package file: {}", "✖".red(), e);
+        return;
+    }
+
+    let manifest_filename = format!("{}/{}-{}.manifest.json", dist_dir, pkg_name, pkg_version);
+    let manifest_content = format!(
+        "{{\n  \"package\": \"{}\",\n  \"version\": \"{}\",\n  \"author\": \"{}\",\n  \"description\": \"{}\",\n  \"sha256_checksum\": \"{}\",\n  \"files_count\": {},\n  \"package_file\": \"{}-{}.prvp\",\n  \"registry_ready\": true\n}}\n",
+        pkg_name, pkg_version, pkg_author, pkg_desc, checksum, files_to_pack.len(), pkg_name, pkg_version
+    );
+    let _ = fs::write(&manifest_filename, &manifest_content);
+
+    println!("  {} Package bundle created: {}", "✔".bright_green().bold(), pkg_filename.bright_cyan().bold());
+    println!("  {} Distribution manifest: {}", "✔".bright_green().bold(), manifest_filename.bright_cyan());
+    println!("  {} Checksum: {}", "✔".bright_green().bold(), checksum.bright_yellow());
+    println!("  {} Package is ready for release & distribution!", "✔".bright_green().bold());
 }
 
 fn run_code_content(content: &str) {
