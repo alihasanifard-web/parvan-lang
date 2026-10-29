@@ -539,6 +539,63 @@ mod tests {
     }
 
     #[test]
+    fn test_static_type_checker() {
+        let code = r#"
+            let a = 10;
+            let b = 20;
+            let c = a + b;
+            let name = "Parvan";
+            let full = name + " Language";
+        "#;
+        let lexer = Lexer::new(code);
+        let mut parser = Parser::new(lexer);
+        let prog = parser.parse_program();
+        assert!(parser.errors.is_empty());
+
+        let mut checker = parvan::typechecker::TypeChecker::new();
+        assert!(checker.check_program(&prog));
+        assert!(checker.errors.is_empty());
+    }
+
+    #[test]
+    fn test_native_c99_emitter() {
+        let code = r#"
+            let x = 5;
+            let y = 10;
+            let sum = x * y + 2;
+            print(sum);
+        "#;
+        let lexer = Lexer::new(code);
+        let mut parser = Parser::new(lexer);
+        let prog = parser.parse_program();
+
+        let mut emitter = parvan::native_emitter::NativeEmitter::new();
+        let c_src = emitter.emit_program(&prog);
+        assert!(c_src.contains("#include <stdio.h>"));
+        assert!(c_src.contains("prv_int x = 5;"));
+        assert!(c_src.contains("prv_print_int("));
+    }
+
+    #[test]
+    fn test_async_event_loop_engine() {
+        use std::sync::atomic::{AtomicI32, Ordering};
+        let counter = std::sync::Arc::new(AtomicI32::new(0));
+
+        let el = parvan::event_loop::EventLoop::new();
+        let c1 = counter.clone();
+        el.spawn(move || {
+            c1.fetch_add(10, Ordering::SeqCst);
+        });
+
+        let c2 = counter.clone();
+        el.set_timeout(std::time::Duration::from_millis(10), move || {
+            c2.fetch_add(5, Ordering::SeqCst);
+        });
+
+        el.run_until_complete();
+        assert_eq!(counter.load(Ordering::SeqCst), 15);
+    }
+    #[test]
     fn test_persian_async_await_syntax() {
         let res = test_eval(r#"
             متغیر دریافت_داده = ناهمگام تابع() {

@@ -10,6 +10,9 @@ pub mod rtl_input;
 pub mod stdlib;
 pub mod token;
 pub mod vm;
+pub mod typechecker;
+pub mod native_emitter;
+pub mod event_loop;
 
 use crate::lexer::Lexer;
 use crate::parser::Parser;

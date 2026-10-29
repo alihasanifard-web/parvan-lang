@@ -399,14 +399,41 @@ print("مساحت دایره با شعاع 7 =", round(area, 2));`
 
       const env = {
         print: (...args) => outputLines.push(args.map(formatObj).join(' ')),
+        println: (...args) => outputLines.push(args.map(formatObj).join(' ')),
         چاپ: (...args) => outputLines.push(args.map(formatObj).join(' ')),
+        چاپ_سطر: (...args) => outputLines.push(args.map(formatObj).join(' ')),
         len: (v) => (v && v.length !== undefined) ? v.length : 0,
+        طول: (v) => (v && v.length !== undefined) ? v.length : 0,
         str: (v) => String(v),
         int: (v) => parseInt(v, 10) || 0,
         round: (v, dec) => dec ? Number(v.toFixed(dec)) : Math.round(v),
         to_jalali: to_jalali,
+        به_شمسی: to_jalali,
+        now: () => Date.now(),
+        زمان_اکنون: () => Date.now(),
         sqrt: Math.sqrt,
-        abs: Math.abs
+        جذر: Math.sqrt,
+        abs: Math.abs,
+        قدر_مطلق: Math.abs,
+        sin: Math.sin,
+        سینوس: Math.sin,
+        cos: Math.cos,
+        کسینوس: Math.cos,
+        tan: Math.tan,
+        تانژانت: Math.tan,
+        pow: Math.pow,
+        توان: Math.pow,
+        channel_create: () => {
+          const queue = [];
+          return {
+            send: (val) => queue.push(val),
+            recv: () => queue.shift() || null
+          };
+        },
+        channel_send: (ch, val) => ch.send(val),
+        channel_recv: (ch) => ch.recv(),
+        cache_set: (k, v) => { sessionStorage.setItem('prv_cache_' + k, JSON.stringify(v)); return true; },
+        cache_get: (k) => { const v = sessionStorage.getItem('prv_cache_' + k); return v ? JSON.parse(v) : null; }
       };
 
       function formatObj(o) {

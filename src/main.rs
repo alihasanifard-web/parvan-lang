@@ -12,7 +12,7 @@ use std::io::{self, Write};
 use std::process;
 use std::rc::Rc;
 
-const VERSION: &str = "3.0.0 (Grand Enterprise Language Platform)";
+const VERSION: &str = "4.0.0 (Next-Gen AOT Native, Static Type Checker & Event-Loop Platform)";
 const MAGIC_MARKER: &[u8] = b"__PARVAN_PAYLOAD_V260_TAG__";
 
 
@@ -151,6 +151,14 @@ fn main() {
             }
             return;
         }
+        if first_arg == "check" || first_arg == "--check" {
+            if args.len() > 2 {
+                run_type_check(&args[2]);
+            } else {
+                eprintln!("{} استفاده: parvan check <file.prv>", "✖".red());
+            }
+            return;
+        }
         if first_arg == "lint" || first_arg == "--lint" {
             if args.len() > 2 {
                 run_linter(&args[2]);
@@ -270,6 +278,7 @@ fn print_help() {
     println!("    {:26} {}", "parvan".bright_cyan(), "ورود به محیط تعاملی پروان (REPL)".bright_black());
     println!("    {:26} {}", "parvan <file.prv>".bright_cyan(), "اجرای فایل کد با مفسر درختی".bright_black());
     println!("    {:26} {}", "parvan --vm <file.prv>".bright_cyan(), "اجرای شتاب‌یافته روی ماشین مجازی بایت‌کد".bright_black());
+    println!("    {:26} {}", "parvan check <file.prv>".bright_cyan(), "تحلیل استاتیک و بررسی پیشرفته انواع داده".bright_black());
     println!("    {:26} {}", "parvan debug <file.prv>".bright_cyan(), "اجرای تعاملی خط‌به‌خط در حالت دیباگ".bright_black());
     println!("    {:26} {}", "parvan build <f> -o <e>".bright_cyan(), "تولید فایل باینری مستقل و محافظت‌شده".bright_black());
     println!("    {:26} {}", "parvan lint <file.prv>".bright_cyan(), "تحلیل استاتیک و عیب‌یابی کدهای مرده".bright_black());
@@ -305,13 +314,36 @@ fn build_standalone(source_path: &str, out_path: &str, target_os: &str) {
     // Verify syntax before bundling
     let lexer = Lexer::new(&source_code);
     let mut parser = Parser::new(lexer);
-    let _ = parser.parse_program();
+    let program = parser.parse_program();
     if !parser.errors.is_empty() {
         eprintln!("{} سورس کد دارای خطای نحوی است و امکان بیلد وجود ندارد.", "✖".red());
         for err in parser.errors {
             eprintln!("  • {}", err.red());
         }
         return;
+    }
+
+    if target_os == "c" || target_os == "native" {
+        // Direct C99 / Machine code emission
+        let mut emitter = parvan::native_emitter::NativeEmitter::new();
+        let c_code = emitter.emit_program(&program);
+        if target_os == "c" {
+            if let Err(e) = fs::write(out_path, c_code) {
+                eprintln!("  {} Failed to write C99 code '{}': {}", "error:".red().bold(), out_path, e);
+            } else {
+                println!("  {} Transpiled C99 source code ready at {}", "Finished".bright_green().bold(), out_path.bright_white().bold());
+            }
+            return;
+        } else {
+            // Compile with gcc
+            println!("  {} Invoking GCC with -O3 optimization for machine code generation...", "•".bright_cyan());
+            if let Err(e) = parvan::native_emitter::compile_c_to_binary(&c_code, out_path) {
+                eprintln!("  {} Native GCC Compilation error: {}", "error:".red().bold(), e);
+            } else {
+                println!("  {} Native AOT machine code executable ready at {}", "Finished".bright_green().bold(), out_path.bright_white().bold());
+            }
+            return;
+        }
     }
 
     if target_os == "linux" {
@@ -571,6 +603,46 @@ fn run_debugger(filename: &str) {
 
     println!();
     println!("  {} Debug session finished cleanly without exceptions.", "✔".bright_green().bold());
+}
+
+fn run_type_check(filename: &str) {
+    println!("  {} {} {}", "Type Checking".bright_green().bold(), filename.bright_white(), "with Parvan Static Analyzer".bright_cyan());
+
+    let content = match fs::read_to_string(filename) {
+        Ok(c) => c,
+        Err(err) => {
+            eprintln!("  {} Cannot read file: {}", "error:".red().bold(), err);
+            return;
+        }
+    };
+
+    let lexer = Lexer::new(&content);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    if !parser.errors.is_empty() {
+        eprintln!("  {} Syntax errors found:", "error:".red().bold());
+        for err in parser.errors {
+            eprintln!("    • {}", err);
+        }
+        return;
+    }
+
+    let mut checker = parvan::typechecker::TypeChecker::new();
+    let is_ok = checker.check_program(&program);
+
+    for w in &checker.warnings {
+        println!("  {} {}", "warning:".bright_yellow().bold(), w);
+    }
+
+    if is_ok {
+        println!("  {} ۰ خطا. تمامی انواع داده و متغیرها با موفقیت تایید شدند (Type Check Passed).", "✔".bright_green().bold());
+    } else {
+        eprintln!("  {} خطاهای بررسی نوع یافت شدند:", "✖".red().bold());
+        for err in checker.errors {
+            eprintln!("    • {}", err.red());
+        }
+    }
 }
 
 fn generate_documentation(filename: &str) {

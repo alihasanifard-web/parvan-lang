@@ -1,0 +1,10 @@
+{
+  "package": "math_utils",
+  "version": "1.0.0",
+  "author": "Parvan Developer",
+  "description": "Parvan Library",
+  "sha256_checksum": "68a09019276e4fd471c4d4291b236daf",
+  "files_count": 1,
+  "package_file": "math_utils-1.0.0.prvp",
+  "registry_ready": true
+}

@@ -294,7 +294,7 @@ impl Lexer {
             "بازگردان" => TokenKind::Return,
             "اگر" => TokenKind::If,
             "وگرنه" => TokenKind::Else,
-            "تا_زمانی_که" => TokenKind::While,
+            "تا_زمانی_که" | "تازمانی‌که" | "حلقه" => TokenKind::While,
             "برای" => TokenKind::For,
             "در" => TokenKind::In,
             "شکست" => TokenKind::Break,

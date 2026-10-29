@@ -1,0 +1,9 @@
+// PARVAN_PACKAGE_V1
+{
+  "name": "math_utils",
+  "version": "1.0.0",
+  "author": "Parvan Developer",
+  "description": "Parvan Library",
+  "checksum": "68a09019276e4fd471c4d4291b236daf",
+  "files": {"C:/Users/V I S I O N/parvan-lang/examples/math_utils.prv": "// Module helper for math utilities\n// ماژول محاسباتی پروان\n\nfn power(base, exp) {\n    let res = 1;\n    let i = 0;\n    while i < exp {\n        res = res * base;\n        i += 1;\n    }\n    return res;\n}\n\nfn factorial(n) {\n    if n <= 1 {\n        return 1;\n    }\n    return n * factorial(n - 1);\n}\n"}
+}
