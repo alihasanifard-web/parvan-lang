@@ -1,8 +1,8 @@
 {
   "name": "parvan-lang",
   "displayName": "Parvan Programming Language",
-  "description": "Official syntax highlighting, Persian RTL support, and snippets for Parvan (.prv)",
-  "version": "2.7.0",
+  "description": "Official syntax highlighting, Persian RTL support, Web Server, AOT Native, and snippets for Parvan (.prv)",
+  "version": "4.0.0",
   "publisher": "parvan-team",
   "main": "./extension.js",
   "activationEvents": [

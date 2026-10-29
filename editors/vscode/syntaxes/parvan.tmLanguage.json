@@ -45,7 +45,7 @@
       "patterns": [
         {
           "name": "keyword.control.parvan",
-          "match": "\\b(if|else|while|for|in|return|break|continue|switch|case|default|try|catch|import|اگر|وگرنه|تا_زمانی_که|برای|در|بازگردان|شکست|ادامه|انتخاب|حالت|پیش‌فرض|پیش_فرض|تلاش|خطا|وارد_کن|پیوست)\\b"
+          "match": "\\b(if|else|while|for|in|return|break|continue|switch|case|default|try|catch|import|as|async|await|enum|match|اگر|وگرنه|تا_زمانی_که|حلقه|برای|در|بازگردان|شکست|ادامه|انتخاب|حالت|پیش‌فرض|پیش_فرض|تلاش|خطا|وارد_کن|به_عنوان|ناهمگام|صبر|منتظر|شمارش|تطبیق)\\b"
         },
         {
           "name": "storage.type.parvan",
@@ -57,7 +57,7 @@
         },
         {
           "name": "support.function.builtin.parvan",
-          "match": "\\b(print|چاپ|len|طول|push|افزودن|pop|حذف_آخر|range|بازه|keys|کلیدها|values|مقادیر|contains|شامل_است|reverse|معکوس|sort|مرتب_سازی|replace|جایگزینی|split|تفکیک|join|پیوستن|trim|پیرایش|uppercase|بزرگ|lowercase|کوچک|input|ورودی|time|زمان|read_file|خواندن_فایل|write_file|نوشتن_فایل|remove_file|حذف_فایل|mkdir|ساخت_پوشه|list_dir|فهرست_پوشه|file_exists|وجود_فایل|http_get|دریافت_وب|http_post|ارسال_وب|abs|قدر_مطلق|sqrt|جذر|floor|کف|ceil|سقف|round|گرد|random|تصادفی|sleep|صبر|json_parse|پارس_جیسون|json_stringify|متن_جیسون|exit|خروج)\\b"
+          "match": "\\b(print|چاپ|println|چاپ_سطر|len|طول|push|افزودن|pop|حذف_آخر|range|بازه|keys|کلیدها|values|مقادیر|contains|شامل_است|reverse|معکوس|sort|مرتب_سازی|replace|جایگزینی|split|تفکیک|join|پیوستن|trim|پیرایش|input|ورودی|time|زمان|now|اکنون|to_jalali|به_شمسی|read_file|خواندن_فایل|write_file|نوشتن_فایل|remove_file|حذف_فایل|mkdir|ساخت_پوشه|list_dir|فهرست_پوشه|file_exists|وجود_فایل|http_get|دریافت_وب|http_post|ارسال_وب|http_put|ویرایش_وب|http_delete|حذف_وب|http_server_new|ساخت_وب_سرور|http_server_route|ثبت_مسیر|http_server_listen|اجرای_وب_سرور|http_server_stop|توقف_وب_سرور|http_response|پاسخ_وب|gc_collect|پاکسازی_حافظه|gc_stats|آمار_حافظه|channel_create|ساخت_کانال|channel_send|ارسال_کانال|channel_recv|دریافت_کانال|regex_match|تطبیق_الگو|regex_replace|جایگزینی_الگو|cache_set|تنظیم_حافظه|cache_get|دریافت_حافظه|db_open|پایگاه_داده|db_exec|اجرای_دیتابیس|db_query|پرسش_دیتابیس|db_begin|شروع_تراکنش|db_commit|تایید_تراکنش|db_rollback|لغو_تراکنش|abs|قدر_مطلق|sqrt|جذر|round|گرد|random|تصادفی|sleep|صبر|json_parse|پارس_جیسون|json_stringify|متن_جیسون|exit|خروج|assert|اطمینان|test|تست)\\b"
         }
       ]
     },

@@ -313,7 +313,7 @@ impl Lexer {
             "شمارش" => TokenKind::Enum,
             "تطبیق" | "انطباق" => TokenKind::Match,
             "درست" => TokenKind::Bool(true),
-            "غلط" => TokenKind::Bool(false),
+            "غلط" | "نادرست" => TokenKind::Bool(false),
             "هیچ" => TokenKind::Nil,
 
             _ => TokenKind::Ident(ident.clone()),

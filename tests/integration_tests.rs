@@ -892,4 +892,17 @@ mod tests {
         assert!(!bad_ok);
         assert!(!tc_bad.errors.is_empty());
     }
+
+    #[test]
+    fn test_in_language_unit_test_framework() {
+        let res = test_eval(r#"
+            let passed = false;
+            test("suite sample", fn() {
+                assert(10 + 5 == 15, "math failed");
+                passed = true;
+            });
+            passed;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
 }

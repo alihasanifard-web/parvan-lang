@@ -424,16 +424,16 @@
   <section class="hero-container">
     <div class="badge-pill">
       <span class="pulse-dot"></span>
-      <span>نسخه رسمی ۲.۶.۰ — Grand Standalone & LSP Ecosystem</span>
+      <span>نسخه رسمی ۴.۰.۰ — AOT Native Machine Code, Web Framework & PPM Registry</span>
     </div>
 
     <div class="hero-logo-box">
-      <img src="logo.svg" alt="Parvan Insinia" />
+      <img src="logo.svg" alt="Parvan Insignia" />
     </div>
 
-    <h1 class="hero-title">مهندسی زبان مدرن؛<br>سرعت راست، ظرافت دوزبانه.</h1>
+    <h1 class="hero-title">مهندسی زبان مدرن؛<br>سرعت کد ماشین بومی، ظرافت دوزبانه.</h1>
     <p class="hero-desc">
-      زبان برنامه‌نویسی پیشرفته، دوگانه (مفسر درختی + کامپایلر بایت‌کد و ماشین مجازی)، بدون GC، با پایگاه داده توکار و تولید خروجی‌های باینری مستقل ویندوز بدون وابستگی خارجی.
+      زبان برنامه‌نویسی پیشرفته چندپارادایمی مجهز به کامپایل به کد ماشین واقعی (AOT C99 با GCC -O3)، فریم‌ورک وب‌سرور چندترده، سیستم تحلیل استاتیک انواع داده، رجیستری ابری PPM، و تست‌رانر درون‌زبانی.
     </p>
 
     <div class="cta-cluster">
@@ -479,8 +479,8 @@
   <!-- Features Bento Grid -->
   <section class="features-container" id="features">
     <div class="section-headline">
-      <h2>چهار ستون قدرت اکوسیستم پروان</h2>
-      <p>طراحی‌شده با دقت صنعتی و عملکرد مافوق صوت با زبان راست</p>
+      <h2>شش ستون قدرت اکوسیستم پروان نسخه ۴</h2>
+      <p>طراحی‌شده با دقت صنعتی، کامپایل به کد ماشین واقعی و معماری مافوق صوت با زبان راست</p>
     </div>
 
     <div class="bento-grid">
@@ -488,60 +488,60 @@
       <div class="bento-card">
         <div>
           <div class="card-icon">⚡</div>
-          <h3 class="card-title">ماشین مجازی استک (Bytecode VM)</h3>
-          <p class="card-desc">کامپایل سریع درخت نحو به بایت‌کدهای کمانی و اجرای مستقیم توابع کاربر و اپل‌های ریاضیاتی با اوپ‌کد <code>OpCall</code> روی استک پردازشی بدون اورهد.</p>
+          <h3 class="card-title">کامپایل به کد ماشین واقعی (AOT Native C99)</h3>
+          <p class="card-desc">ترجمه مستقیم به C99 فوق‌بهینه و کامپایل به کدهای باینری بومی x86_64 با فراخوانی خودکار کامپایلر GCC و سطح بهینه‌سازی <code>-O3</code>.</p>
         </div>
-        <div class="card-snippet">$ parvan --vm benchmark.prv</div>
+        <div class="card-snippet">$ parvan build app.prv -o app.exe -t native</div>
       </div>
 
       <!-- Card 2 -->
       <div class="bento-card">
         <div>
-          <div class="card-icon">📦</div>
-          <h3 class="card-title">باینری‌ساز مستقل (Native Standalone)</h3>
-          <p class="card-desc">تولید مستقیم فایل‌های تک‌فایل <code>.exe</code> از سورس‌کدهای پروژه بدون نیاز به نصب پروان یا هیچ ابزار جانبی دیگر روی سیستم مقصد.</p>
+          <div class="card-icon">🌐</div>
+          <h3 class="card-title">فریم‌ورک وب‌سرور چندترده (Web Server Engine)</h3>
+          <p class="card-desc">توسعه میکروسرویس‌ها و APIهای با کارایی بالا با روتر مدرن، پارس خودکار هدرها، بدنه و کوئری، و بازگردانی خودکار JSON استاندارد.</p>
         </div>
-        <div class="card-snippet">$ parvan build main.prv -o app.exe</div>
+        <div class="card-snippet">http_server_route(srv, "GET", "/api", handler);</div>
       </div>
 
       <!-- Card 3 -->
       <div class="bento-card">
         <div>
-          <div class="card-icon">🔮</div>
-          <h3 class="card-title">پروتکل زنده ادیتورها (LSP Engine)</h3>
-          <p class="card-desc">سرور زبان داخلی برای ارتباط لحظه‌ای با افزونه‌های VS Code و VSCodium از طریق JSON-RPC استاندارد جهت خطایابی و هایلایت حین تایپ.</p>
+          <div class="card-icon">🔬</div>
+          <h3 class="card-title">تحلیل استاتیک و بررسی انواع (Type Checker)</h3>
+          <p class="card-desc">کشف پیش‌دستانه خطاهای عدم تطابق نوع داده، متغیرهای تعریف‌نشده و عملگرهای نامعتبر قبل از اجرای برنامه در محیط پروداکشن.</p>
         </div>
-        <div class="card-snippet">$ parvan --lsp</div>
+        <div class="card-snippet">$ parvan check source.prv</div>
       </div>
 
       <!-- Card 4 -->
       <div class="bento-card">
         <div>
-          <div class="card-icon">🏛️</div>
-          <h3 class="card-title">شیءگرایی و نحو دوزبانه</h3>
-          <p class="card-desc">پشتیبانی کامل و متقارن از کلمات کلیدی فارسی و انگلیسی (ساختار، تابع، این / struct, fn, self) به همراه درون‌یابی متغیرها (f-strings).</p>
+          <div class="card-icon">📦</div>
+          <h3 class="card-title">پکیج منیجر ابری PPM (Package Registry)</h3>
+          <p class="card-desc">مدیریت وابستگی‌ها و بسته‌بندی کتابخانه‌ها در قالب آرشیوهای امن <code>.prvp</code> با کش هوشمند محلی و رجیستری متمرکز.</p>
         </div>
-        <div class="card-snippet">let msg = "امتیاز: {score + 10}";</div>
+        <div class="card-snippet">$ parvan add math_extra</div>
       </div>
 
       <!-- Card 5 -->
       <div class="bento-card">
         <div>
-          <div class="card-icon">🗄️</div>
-          <h3 class="card-title">پایگاه داده و سرور وب توکار</h3>
-          <p class="card-desc">ماژول ذخیره‌سازی داده رابطه‌ای بدون نیاز به درایور خارجی (<code>db_open</code>) و وب‌سرور سوکتی بهینه‌سازی‌شده برای پاسخگویی به درخواست‌های HTTP.</p>
+          <div class="card-icon">🧹</div>
+          <h3 class="card-title">مدیریت حافظه ایمن از چرخه (Cycle-Safe GC)</h3>
+          <p class="card-desc">سیستم پایش بلادرنگ اشیاء حافظه و پاکسازی پیشرفته ارجاعات متقابل در کلوسرها و متغیرها با تابع توکار <code>gc_collect()</code>.</p>
         </div>
-        <div class="card-snippet">http_listen(8080, handler);</div>
+        <div class="card-snippet">let freed = gc_collect();</div>
       </div>
 
       <!-- Card 6 -->
       <div class="bento-card">
         <div>
-          <div class="card-icon">🔐</div>
-          <h3 class="card-title">ماژول ریاضی، رمزنگاری و تقویم جلالی</h3>
-          <p class="card-desc">کتابخانه غنی شامل توابع مثلثاتی پیشرفته، توابع هشینگ <code>sha256</code> و <code>md5</code>، تبدیل دقیق تاریخ‌های میلادی به شمسی و موتور تست خودکار.</p>
+          <div class="card-icon">🧪</div>
+          <h3 class="card-title">فریم‌ورک تست‌نویسی درون‌زبانی (Test Runner)</h3>
+          <p class="card-desc">تست‌نویسی مستقیم به خود زبان پروان با توابع توکار <code>test</code> و <code>assert</code> و گزارش تفکیکی رنگی و خودکار نتایج آزمون‌ها.</p>
         </div>
-        <div class="card-snippet">let hash = sha256("parvan");</div>
+        <div class="card-snippet">$ parvan test</div>
       </div>
     </div>
   </section>

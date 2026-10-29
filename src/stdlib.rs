@@ -1,4 +1,5 @@
 use crate::object::Object;
+use colored::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -91,6 +92,7 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "http_response" | "پاسخ_وب" => Some(Object::Builtin(builtin_http_response)),
         "gc_collect" | "پاکسازی_حافظه" => Some(Object::Builtin(builtin_gc_collect)),
         "gc_stats" | "آمار_حافظه" => Some(Object::Builtin(builtin_gc_stats)),
+        "test" | "تست" => Some(Object::Builtin(builtin_test)),
         "spawn" | "پردازش_موازی" => Some(Object::Builtin(builtin_spawn)),
         _ => None,
     }
@@ -1382,6 +1384,25 @@ fn builtin_assert(args: Vec<Object>) -> Result<Object, String> {
         return Err(format!("تست رد شد: {}", msg));
     }
     Ok(Object::Bool(true))
+}
+
+fn builtin_test(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع test نیازمند (نام_آزمون، تابع_اجرا) است.".to_string());
+    }
+    let name = args[0].to_string();
+    let handler = args[1].clone();
+
+    match crate::evaluator::apply_function(handler, vec![], &crate::token::Token::default()) {
+        Ok(_) => {
+            println!("    {} {} ... {}", "✔".bright_green().bold(), name.bright_white(), "ok".bright_green());
+            Ok(Object::Bool(true))
+        }
+        Err(e) => {
+            println!("    {} {} ... {} ({})", "✖".red().bold(), name.bright_white(), "FAILED".red().bold(), e);
+            Err(e)
+        }
+    }
 }
 
 // Native C-FFI and WebSocket Builtins for Parvan Ecosystem

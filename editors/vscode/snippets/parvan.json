@@ -41,5 +41,45 @@
       "let ${1:result} = ${2:value} |> ${3:func1} |> ${4:func2};"
     ],
     "description": "Parvan pipeline operator"
+  },
+  "Web Server Setup": {
+    "prefix": "server",
+    "body": [
+      "let srv = http_server_new();",
+      "http_server_route(srv, \"GET\", \"/api/status\", fn(req) {",
+      "\treturn {\"status\": \"online\", \"version\": \"4.0.0\"};",
+      "});",
+      "http_server_listen(srv, ${1:8080}, true);"
+    ],
+    "description": "Create a high-performance Parvan web server"
+  },
+  "Persian Web Server": {
+    "prefix": "وب_سرور",
+    "body": [
+      "متغیر سرور = ساخت_وب_سرور();",
+      "ثبت_مسیر(سرور, \"GET\", \"/api/status\", تابع(درخواست) {",
+      "\tبازگردان {\"وضعیت\": \"آنلاین\", \"نسخه\": \"۴.۰.۰\"};",
+      "});",
+      "اجرای_وب_سرور(سرور, ${1:8080}, درست);"
+    ],
+    "description": "ساخت وب‌سرور چندترده بومی به زبان فارسی"
+  },
+  "Test Case": {
+    "prefix": "test",
+    "body": [
+      "test(\"${1:test name}\", fn() {",
+      "\tassert(${2:condition}, \"${3:assertion failed}\");",
+      "});"
+    ],
+    "description": "Create a Parvan test case"
+  },
+  "Persian Test Case": {
+    "prefix": "تست",
+    "body": [
+      "تست(\"${1:نام آزمون}\", تابع() {",
+      "\tاطمینان(${2:شرط}, \"${3:خطای آزمون}\");",
+      "});"
+    ],
+    "description": "ایجاد مورد آزمون تست به زبان فارسی"
   }
 }
