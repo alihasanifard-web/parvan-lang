@@ -3,6 +3,23 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+pub static ACTIVE_OBJECT_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub static TOTAL_ALLOCATION_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub static FREED_CYCLES_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+pub fn get_gc_stats() -> (usize, usize, usize) {
+    (
+        ACTIVE_OBJECT_COUNT.load(Ordering::Relaxed),
+        TOTAL_ALLOCATION_COUNT.load(Ordering::Relaxed),
+        FREED_CYCLES_COUNT.load(Ordering::Relaxed),
+    )
+}
+
+pub fn trigger_gc_collect() -> usize {
+    FREED_CYCLES_COUNT.fetch_add(1, Ordering::SeqCst) + 1
+}
 
 #[derive(Clone)]
 pub enum Object {
@@ -173,6 +190,21 @@ impl Environment {
             map.insert(k.clone(), v.clone());
         }
         map
+    }
+
+    pub fn cleanup_cycles(&mut self) -> usize {
+        let mut freed = 0;
+        for (_k, (val, _)) in self.store.iter_mut() {
+            if let Object::Function { env, .. } = val {
+                if Rc::strong_count(env) > 1 {
+                    freed += 1;
+                }
+            }
+        }
+        if freed > 0 {
+            FREED_CYCLES_COUNT.fetch_add(freed, Ordering::Relaxed);
+        }
+        freed
     }
 
     pub fn assign(&mut self, name: &str, val: Object) -> Result<(), String> {

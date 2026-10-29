@@ -84,6 +84,13 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "db_commit" | "تایید_تراکنش" => Some(Object::Builtin(builtin_db_commit)),
         "db_rollback" | "لغو_تراکنش" => Some(Object::Builtin(builtin_db_rollback)),
         "http_listen" | "شنود_وب" => Some(Object::Builtin(builtin_http_listen)),
+        "http_server_new" | "ساخت_وب_سرور" => Some(Object::Builtin(builtin_http_server_new)),
+        "http_server_route" | "ثبت_مسیر" => Some(Object::Builtin(builtin_http_server_route)),
+        "http_server_listen" | "اجرای_وب_سرور" => Some(Object::Builtin(builtin_http_server_listen)),
+        "http_server_stop" | "توقف_وب_سرور" => Some(Object::Builtin(builtin_http_server_stop)),
+        "http_response" | "پاسخ_وب" => Some(Object::Builtin(builtin_http_response)),
+        "gc_collect" | "پاکسازی_حافظه" => Some(Object::Builtin(builtin_gc_collect)),
+        "gc_stats" | "آمار_حافظه" => Some(Object::Builtin(builtin_gc_stats)),
         "spawn" | "پردازش_موازی" => Some(Object::Builtin(builtin_spawn)),
         _ => None,
     }
@@ -1819,4 +1826,379 @@ fn builtin_spawn(args: Vec<Object>) -> Result<Object, String> {
         std::thread::sleep(std::time::Duration::from_millis(50));
     });
     Ok(Object::Bool(true))
+}
+
+// ==============================================================================
+// 🌐 PARVAN NATIVE MULTI-THREADED WEB FRAMEWORK & ROUTER ENGINE
+// ==============================================================================
+
+#[derive(Clone)]
+struct SendWrapper<T>(pub T);
+unsafe impl<T> Send for SendWrapper<T> {}
+unsafe impl<T> Sync for SendWrapper<T> {}
+
+#[derive(Clone)]
+struct WebRoute {
+    method: String,
+    path: String,
+    handler: SendWrapper<Object>,
+}
+
+struct ParvanServerInstance {
+    routes: Vec<WebRoute>,
+    running: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    port: u16,
+}
+unsafe impl Send for ParvanServerInstance {}
+unsafe impl Sync for ParvanServerInstance {}
+
+static NEXT_SERVER_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+static WEB_SERVERS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<u64, ParvanServerInstance>>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+fn builtin_http_server_new(_args: Vec<Object>) -> Result<Object, String> {
+    let id = NEXT_SERVER_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let instance = ParvanServerInstance {
+        routes: Vec::new(),
+        running: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        port: 8080,
+    };
+    WEB_SERVERS.lock().unwrap().insert(id, instance);
+
+    let mut map = std::collections::HashMap::new();
+    map.insert("server_id".to_string(), Object::Int(id as i64));
+    map.insert("engine".to_string(), Object::Str("Parvan Native Web Framework v4.0".to_string()));
+    Ok(Object::Map(Rc::new(RefCell::new(map))))
+}
+
+fn builtin_http_server_route(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 4 {
+        return Err("تابع http_server_route نیازمند ۴ آرگومان است: (سرور، متد، مسیر، تابع_هندلر)".to_string());
+    }
+    let server_id = match &args[0] {
+        Object::Int(id) => *id as u64,
+        Object::Map(m) => {
+            if let Some(Object::Int(id)) = m.borrow().get("server_id") {
+                *id as u64
+            } else {
+                return Err("شناسه سرور در شیء یافت نشد.".to_string());
+            }
+        }
+        _ => return Err("آرگومان اول باید شیء سرور باشد.".to_string()),
+    };
+
+    let method = match &args[1] {
+        Object::Str(m) => m.to_uppercase(),
+        _ => return Err("متد HTTP باید رشته متنی باشد (مانند 'GET' یا 'POST').".to_string()),
+    };
+
+    let path = match &args[2] {
+        Object::Str(p) => p.clone(),
+        _ => return Err("مسیر روت باید رشته متنی باشد (مانند '/api/users').".to_string()),
+    };
+
+    let handler = args[3].clone();
+
+    let mut servers = WEB_SERVERS.lock().unwrap();
+    if let Some(srv) = servers.get_mut(&server_id) {
+        srv.routes.push(WebRoute { method, path, handler: SendWrapper(handler) });
+        Ok(Object::Bool(true))
+    } else {
+        Err(format!("سرور وب با شناسه {} یافت نشد.", server_id))
+    }
+}
+
+fn parse_http_raw_request(raw: &str) -> Option<(String, String, std::collections::HashMap<String, String>, std::collections::HashMap<String, String>, String)> {
+    let mut parts = raw.split("
+\n
+\n");
+    let header_part = parts.next()?;
+    let body_part = parts.next().unwrap_or("").to_string();
+
+    let mut lines = header_part.lines();
+    let request_line = lines.next()?;
+    let mut req_tokens = request_line.split_whitespace();
+    let method = req_tokens.next()?.to_string();
+    let raw_uri = req_tokens.next()?.to_string();
+
+    let (path, query) = if let Some(q_idx) = raw_uri.find('?') {
+        let (p, q) = raw_uri.split_at(q_idx);
+        let q_clean = &q[1..];
+        let mut q_map = std::collections::HashMap::new();
+        for pair in q_clean.split('&') {
+            if let Some(eq_idx) = pair.find('=') {
+                q_map.insert(pair[..eq_idx].to_string(), pair[eq_idx + 1..].to_string());
+            } else if !pair.is_empty() {
+                q_map.insert(pair.to_string(), "".to_string());
+            }
+        }
+        (p.to_string(), q_map)
+    } else {
+        (raw_uri, std::collections::HashMap::new())
+    };
+
+    let mut headers = std::collections::HashMap::new();
+    for line in lines {
+        if let Some(colon) = line.find(':') {
+            let k = line[..colon].trim().to_lowercase();
+            let v = line[colon + 1..].trim().to_string();
+            headers.insert(k, v);
+        }
+    }
+
+    Some((method, path, query, headers, body_part))
+}
+
+fn builtin_http_server_listen(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع http_server_listen نیازمند حداقل ۲ آرگومان است: (سرور، پورت، [پس_زمینه])".to_string());
+    }
+    let server_id = match &args[0] {
+        Object::Int(id) => *id as u64,
+        Object::Map(m) => {
+            if let Some(Object::Int(id)) = m.borrow().get("server_id") {
+                *id as u64
+            } else {
+                return Err("شناسه سرور در شیء یافت نشد.".to_string());
+            }
+        }
+        _ => return Err("آرگومان اول باید شیء سرور باشد.".to_string()),
+    };
+
+    let port = match &args[1] {
+        Object::Int(p) => *p as u16,
+        _ => return Err("پورت سرور باید یک عدد صحیح باشد.".to_string()),
+    };
+
+    let background = if args.len() > 2 { args[2].is_truthy() } else { false };
+    let max_requests = if args.len() > 3 {
+        match &args[3] {
+            Object::Int(n) => *n as usize,
+            _ => 0,
+        }
+    } else {
+        0
+    };
+
+    let (routes, running) = {
+        let mut servers = WEB_SERVERS.lock().unwrap();
+        if let Some(srv) = servers.get_mut(&server_id) {
+            srv.port = port;
+            srv.running.store(true, std::sync::atomic::Ordering::SeqCst);
+            (srv.routes.clone(), srv.running.clone())
+        } else {
+            return Err(format!("سرور با شناسه {} یافت نشد.", server_id));
+        }
+    };
+
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", port))
+        .map_err(|e| format!("خطای اتصال به پورت {}: {}", port, e))?;
+    listener.set_nonblocking(true).map_err(|e| e.to_string())?;
+
+    let run_loop = move || {
+        let mut served_count = 0;
+
+        while running.load(std::sync::atomic::Ordering::SeqCst) {
+            match listener.accept() {
+                Ok((mut stream, _)) => {
+                    let mut buf = [0u8; 8192];
+                    let bytes_read = stream.read(&mut buf).unwrap_or(0);
+                    if bytes_read > 0 {
+                        let raw = String::from_utf8_lossy(&buf[..bytes_read]);
+                        if let Some((method, path, query, headers, body)) = parse_http_raw_request(&raw) {
+                            // Build Request Object in Parvan
+                            let mut req_map = std::collections::HashMap::new();
+                            req_map.insert("method".to_string(), Object::Str(method.clone()));
+                            req_map.insert("path".to_string(), Object::Str(path.clone()));
+                            req_map.insert("body".to_string(), Object::Str(body));
+
+                            let mut q_obj = std::collections::HashMap::new();
+                            for (k, v) in query {
+                                q_obj.insert(k, Object::Str(v));
+                            }
+                            req_map.insert("query".to_string(), Object::Map(Rc::new(RefCell::new(q_obj))));
+
+                            let mut h_obj = std::collections::HashMap::new();
+                            for (k, v) in headers {
+                                h_obj.insert(k, Object::Str(v));
+                            }
+                            req_map.insert("headers".to_string(), Object::Map(Rc::new(RefCell::new(h_obj))));
+
+                            let req_obj = Object::Map(Rc::new(RefCell::new(req_map)));
+
+                            // Match route
+                            let mut matched = None;
+                            for r in &routes {
+                                let method_ok = r.method == "*" || r.method == method;
+                                let path_ok = r.path == "*" || r.path == path || (r.path.ends_with('*') && path.starts_with(&r.path[..r.path.len() - 1]));
+                                if method_ok && path_ok {
+                                    matched = Some(r.handler.0.clone());
+                                    break;
+                                }
+                            }
+
+                            let response_str = if let Some(handler) = matched {
+                                match crate::evaluator::apply_function(handler, vec![req_obj], &crate::token::Token::default()) {
+                                    Ok(Object::Map(m)) => {
+                                        let has_custom = m.borrow().contains_key("status") && m.borrow().contains_key("body");
+                                        if has_custom {
+                                            let st = match m.borrow().get("status") {
+                                                Some(Object::Int(s)) => *s,
+                                                _ => 200,
+                                            };
+                                            let bd = match m.borrow().get("body") {
+                                                Some(Object::Str(s)) => s.clone(),
+                                                Some(other) => builtin_json_stringify(vec![other.clone()]).map(|o| o.to_string()).unwrap_or_default(),
+                                                _ => "".to_string(),
+                                            };
+                                            format!("HTTP/1.1 {} OK
+\nContent-Type: application/json; charset=utf-8
+\nContent-Length: {}
+\nConnection: close
+\n
+\n{}", st, bd.as_bytes().len(), bd)
+                                        } else {
+                                            let json_str = builtin_json_stringify(vec![Object::Map(m)]).map(|o| match o { Object::Str(s) => s, _ => o.to_string() }).unwrap_or_else(|_| "{}".to_string());
+                                            format!("HTTP/1.1 200 OK
+\nContent-Type: application/json; charset=utf-8
+\nContent-Length: {}
+\nConnection: close
+\n
+\n{}", json_str.as_bytes().len(), json_str)
+                                        }
+                                    }
+                                    Ok(Object::Str(s)) => {
+                                        let ct = if s.trim_start().starts_with('<') { "text/html; charset=utf-8" } else { "text/plain; charset=utf-8" };
+                                        format!("HTTP/1.1 200 OK
+\nContent-Type: {}
+\nContent-Length: {}
+\nConnection: close
+\n
+\n{}", ct, s.as_bytes().len(), s)
+                                    }
+                                    Ok(other) => {
+                                        let s = other.to_string();
+                                        format!("HTTP/1.1 200 OK
+\nContent-Type: text/plain; charset=utf-8
+\nContent-Length: {}
+\nConnection: close
+\n
+\n{}", s.as_bytes().len(), s)
+                                    }
+                                    Err(e) => {
+                                        let err_body = format!("{{\"error\":\"{}\"}}", e.replace('"', "\\\""));
+                                        format!("HTTP/1.1 500 Internal Server Error
+\nContent-Type: application/json; charset=utf-8
+\nContent-Length: {}
+\nConnection: close
+\n
+\n{}", err_body.as_bytes().len(), err_body)
+                                    }
+                                }
+                            } else {
+                                let not_found = "{\"error\":\"مسیر مورد نظر در وب‌سرور پروان تعریف نشده است (404)\"}";
+                                format!("HTTP/1.1 404 Not Found
+\nContent-Type: application/json; charset=utf-8
+\nContent-Length: {}
+\nConnection: close
+\n
+\n{}", not_found.as_bytes().len(), not_found)
+                            };
+
+                            let _ = stream.write_all(response_str.as_bytes());
+                            let _ = stream.flush();
+                        }
+                    }
+                    served_count += 1;
+                    if max_requests > 0 && served_count >= max_requests {
+                        break;
+                    }
+                }
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(std::time::Duration::from_millis(5));
+                }
+                Err(_) => {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+            }
+        }
+    };
+
+    if background {
+        std::thread::spawn(run_loop);
+        println!("  🌐 وب‌سرور پروان روی http://127.0.0.1:{} به صورت پس‌زمینه راه‌اندازی شد.", port);
+    } else {
+        println!("  🌐 وب‌سرور پروان روی http://127.0.0.1:{} در حال گوش دادن است...", port);
+        run_loop();
+    }
+
+    Ok(Object::Bool(true))
+}
+
+fn builtin_http_server_stop(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع http_server_stop نیازمند شیء یا شناسه سرور است.".to_string());
+    }
+    let server_id = match &args[0] {
+        Object::Int(id) => *id as u64,
+        Object::Map(m) => {
+            if let Some(Object::Int(id)) = m.borrow().get("server_id") {
+                *id as u64
+            } else {
+                return Err("شناسه سرور در شیء یافت نشد.".to_string());
+            }
+        }
+        _ => return Err("آرگومان باید شیء سرور باشد.".to_string()),
+    };
+
+    let mut servers = WEB_SERVERS.lock().unwrap();
+    if let Some(srv) = servers.get_mut(&server_id) {
+        srv.running.store(false, std::sync::atomic::Ordering::SeqCst);
+        let port = srv.port;
+        // Wake up listener if waiting
+        let _ = std::net::TcpStream::connect(format!("127.0.0.1:{}", port));
+        Ok(Object::Bool(true))
+    } else {
+        Err(format!("سرور با شناسه {} یافت نشد.", server_id))
+    }
+}
+
+fn builtin_http_response(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع http_response نیازمند (کد_وضعیت، بدنه) است.".to_string());
+    }
+    let status = match &args[0] {
+        Object::Int(s) => *s,
+        _ => 200,
+    };
+    let body = args[1].clone();
+    let mut map = std::collections::HashMap::new();
+    map.insert("status".to_string(), Object::Int(status));
+    map.insert("body".to_string(), body);
+
+    if args.len() > 2 {
+        map.insert("headers".to_string(), args[2].clone());
+    }
+    Ok(Object::Map(Rc::new(RefCell::new(map))))
+}
+
+// ==============================================================================
+// 🔬 CYCLE-SAFE MEMORY ENGINE & TRACING GARBAGE COLLECTOR
+// ==============================================================================
+
+fn builtin_gc_collect(_args: Vec<Object>) -> Result<Object, String> {
+    let freed = crate::object::trigger_gc_collect();
+    Ok(Object::Int(freed as i64))
+}
+
+fn builtin_gc_stats(_args: Vec<Object>) -> Result<Object, String> {
+    let (active, total, freed) = crate::object::get_gc_stats();
+    let mut map = std::collections::HashMap::new();
+    map.insert("active_objects".to_string(), Object::Int(active as i64));
+    map.insert("total_allocated".to_string(), Object::Int(total as i64));
+    map.insert("freed_cycles".to_string(), Object::Int(freed as i64));
+    Ok(Object::Map(Rc::new(RefCell::new(map))))
 }

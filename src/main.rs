@@ -192,7 +192,19 @@ fn main() {
             publish_package(target_path);
             return;
         }
-        if first_arg == "--install" {
+        if first_arg == "add" || first_arg == "--add" {
+            if args.len() > 2 {
+                add_package_dependency(&args[2]);
+            } else {
+                eprintln!("{} استفاده: parvan add <package_name>", "✖".red());
+            }
+            return;
+        }
+        if first_arg == "registry" || first_arg == "--registry" {
+            list_registry_packages();
+            return;
+        }
+        if first_arg == "install" || first_arg == "--install" {
             if args.len() > 2 {
                 install_package(&args[2]);
             } else {
@@ -918,6 +930,20 @@ fn install_package(pkg_name: &str) {
     let pkg_dir = format!("parvan_modules/{}", dir_name);
     let _ = fs::create_dir_all(&pkg_dir);
 
+    // Check PPM Local/Global Registry Cache first (~/.parvan/packages)
+    if let Ok(home) = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) {
+        let cached_pkg_dir = format!("{}/.parvan/packages/{}", home, dir_name);
+        let cached_mod_prv = format!("{}/mod.prv", cached_pkg_dir);
+        if std::path::Path::new(&cached_mod_prv).exists() {
+            if let Ok(content) = fs::read_to_string(&cached_mod_prv) {
+                let dest_mod = format!("{}/mod.prv", pkg_dir);
+                let _ = fs::write(&dest_mod, content);
+                println!("  {} Package '{}' resolved from PPM Registry Cache into {}", "Finished".bright_green().bold(), pkg_name.bright_white(), pkg_dir.bright_cyan());
+                return;
+            }
+        }
+    }
+
     // If GitHub repo given, clone or pull via git
     if let Some(ref url) = clone_url {
         let status = process::Command::new("git")
@@ -946,12 +972,75 @@ let red = (txt) -> "\u001b[31m" + txt + "\u001b[0m";
 let green = (txt) -> "\u001b[32m" + txt + "\u001b[0m";
 let blue = (txt) -> "\u001b[34m" + txt + "\u001b[0m";
 "#,
+            "web_router" => r#"// Parvan Web Router Helpers
+let json_ok = (data) -> http_response(200, data);
+let json_err = (msg, code) -> http_response(code, {"error": msg});
+"#,
+            "crypto_utils" => r#"// Parvan Cryptographic Helpers
+let hash_password = (pass, salt) -> sha256(pass + salt);
+"#,
             _ => "// Parvan Community Module\nlet version = \"1.0.0\";\n",
         };
         let _ = fs::write(&mod_file, template_content);
     }
 
     println!("  {} Package '{}' installed successfully in {}", "Finished".bright_green().bold(), pkg_name.bright_white(), pkg_dir.bright_cyan());
+}
+
+fn add_package_dependency(pkg_name: &str) {
+    install_package(pkg_name);
+
+    let toml_path = "Parvan.toml";
+    let (clean_name, version) = if let Some(idx) = pkg_name.find('@') {
+        (&pkg_name[..idx], &pkg_name[idx + 1..])
+    } else {
+        (pkg_name.split('/').last().unwrap_or(pkg_name), "1.0.0")
+    };
+
+    let mut content = if let Ok(s) = fs::read_to_string(toml_path) {
+        s
+    } else {
+        format!("[package]\nname = \"parvan_app\"\nversion = \"1.0.0\"\nauthor = \"Parvan Developer\"\n\n[dependencies]\n")
+    };
+
+    if !content.contains("[dependencies]") {
+        content.push_str("\n[dependencies]\n");
+    }
+
+    let dep_line = format!("{} = \"{}\"", clean_name, version);
+    if !content.contains(&format!("{} =", clean_name)) {
+        content.push_str(&format!("{}\n", dep_line));
+        let _ = fs::write(toml_path, content);
+        println!("  {} Added dependency '{}' to Parvan.toml", "✔".green(), clean_name.bright_cyan());
+    } else {
+        println!("  {} Dependency '{}' already tracked in Parvan.toml", "✔".green(), clean_name);
+    }
+}
+
+fn list_registry_packages() {
+    println!("\n  {} Parvan Cloud & Local Package Registry (PPM):", "📦".bold());
+    println!("  -------------------------------------------------------------");
+
+    let home = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")).unwrap_or_else(|_| ".".to_string());
+    let pkg_root = format!("{}/.parvan/packages", home);
+
+    let mut count = 0;
+    if let Ok(entries) = fs::read_dir(&pkg_root) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                count += 1;
+                println!("  • {} (Cached in ~/.parvan/packages)", name.bright_cyan().bold());
+            }
+        }
+    }
+
+    println!("  • {} (Standard Math & Trigonometry)", "math_extra".bright_cyan());
+    println!("  • {} (Terminal Colors & Text Formatting)", "colors".bright_cyan());
+    println!("  • {} (Parvan Router & HTTP Helpers)", "web_router".bright_cyan());
+    println!("  • {} (Hashing & Cryptographic Primitives)", "crypto_utils".bright_cyan());
+    println!("  -------------------------------------------------------------");
+    println!("  Total packages available: {}\n", count + 4);
 }
 
 fn install_all_packages() {
@@ -1101,6 +1190,19 @@ fn publish_package(target_path: &str) {
     println!("  {} Package bundle created: {}", "✔".bright_green().bold(), pkg_filename.bright_cyan().bold());
     println!("  {} Distribution manifest: {}", "✔".bright_green().bold(), manifest_filename.bright_cyan());
     println!("  {} Checksum: {}", "✔".bright_green().bold(), checksum.bright_yellow());
+
+    // Register in global user PPM cache
+    if let Ok(home) = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) {
+        let pkg_cache_dir = format!("{}/.parvan/packages/{}", home, pkg_name);
+        let _ = fs::create_dir_all(&pkg_cache_dir);
+        let _ = fs::copy(&pkg_filename, format!("{}/{}-{}.prvp", pkg_cache_dir, pkg_name, pkg_version));
+        let reg_dir = format!("{}/.parvan/registry", home);
+        let _ = fs::create_dir_all(&reg_dir);
+        let reg_entry = format!("{{\"package\": \"{}\", \"version\": \"{}\", \"author\": \"{}\", \"archive\": \"{}/{}-{}.prvp\"}}\n", pkg_name, pkg_version, pkg_author, pkg_cache_dir, pkg_name, pkg_version);
+        let _ = fs::write(format!("{}/{}.json", reg_dir, pkg_name), reg_entry);
+        println!("  {} Published and indexed in local PPM Registry (~/.parvan/registry)", "✔".bright_green().bold());
+    }
+
     println!("  {} Package is ready for release & distribution!", "✔".bright_green().bold());
 }
 

@@ -574,7 +574,7 @@ fn eval_index_op(left: Object, index: Object, tok: &crate::token::Token) -> Resu
     }
 }
 
-fn apply_function(func: Object, args: Vec<Object>, tok: &crate::token::Token) -> Result<Object, String> {
+pub fn apply_function(func: Object, args: Vec<Object>, tok: &crate::token::Token) -> Result<Object, String> {
     match func {
         Object::Builtin(builtin) => builtin(args).map_err(|e| format!("خطا در تابع در سطر {}: {}", tok.line, e)),
         Object::Struct { name, fields, methods } => {

@@ -10,6 +10,7 @@ pub struct Vm {
     stack: Vec<Object>,
     globals: Vec<Object>,
     ip: usize, // Instruction Pointer
+    pub hot_loops: std::collections::HashMap<usize, usize>,
 }
 
 impl Vm {
@@ -20,7 +21,12 @@ impl Vm {
             stack: Vec::with_capacity(STACK_SIZE),
             globals: vec![Object::Nil; GLOBALS_SIZE],
             ip: 0,
+            hot_loops: std::collections::HashMap::new(),
         }
+    }
+
+    pub fn hot_loop_count(&self) -> usize {
+        self.hot_loops.values().filter(|&&v| v >= 5).count()
     }
 
     pub fn run(&mut self) -> Result<Object, String> {
@@ -34,26 +40,59 @@ impl Vm {
                     let obj = self.constants[const_idx as usize].clone();
                     self.push(obj)?;
                 }
-                x if x == Opcode::OpAdd as u8 => self.execute_binary_op(|a, b| match (a, b) {
-                    (Object::Int(x), Object::Int(y)) => Ok(Object::Int(x + y)),
-                    (Object::Float(x), Object::Float(y)) => Ok(Object::Float(x + y)),
-                    (Object::Int(x), Object::Float(y)) => Ok(Object::Float(x as f64 + y)),
-                    (Object::Float(x), Object::Int(y)) => Ok(Object::Float(x + y as f64)),
-                    (Object::Str(x), Object::Str(y)) => Ok(Object::Str(format!("{}{}", x, y))),
-                    (Object::Str(x), other) => Ok(Object::Str(format!("{}{}", x, other))),
-                    (other, Object::Str(y)) => Ok(Object::Str(format!("{}{}", other, y))),
-                    _ => Err("Unsupported types for Add".to_string()),
-                })?,
-                x if x == Opcode::OpSub as u8 => self.execute_binary_op(|a, b| match (a, b) {
-                    (Object::Int(x), Object::Int(y)) => Ok(Object::Int(x - y)),
-                    (Object::Float(x), Object::Float(y)) => Ok(Object::Float(x - y)),
-                    _ => Err("Unsupported types for Sub".to_string()),
-                })?,
-                x if x == Opcode::OpMul as u8 => self.execute_binary_op(|a, b| match (a, b) {
-                    (Object::Int(x), Object::Int(y)) => Ok(Object::Int(x * y)),
-                    (Object::Float(x), Object::Float(y)) => Ok(Object::Float(x * y)),
-                    _ => Err("Unsupported types for Mul".to_string()),
-                })?,
+                x if x == Opcode::OpAdd as u8 => {
+                    let len = self.stack.len();
+                    if len >= 2 {
+                        if let (Object::Int(a), Object::Int(b)) = (&self.stack[len - 2], &self.stack[len - 1]) {
+                            let res = a + b;
+                            self.stack.pop();
+                            self.stack[len - 2] = Object::Int(res);
+                            continue;
+                        }
+                    }
+                    self.execute_binary_op(|a, b| match (a, b) {
+                        (Object::Int(x), Object::Int(y)) => Ok(Object::Int(x + y)),
+                        (Object::Float(x), Object::Float(y)) => Ok(Object::Float(x + y)),
+                        (Object::Int(x), Object::Float(y)) => Ok(Object::Float(x as f64 + y)),
+                        (Object::Float(x), Object::Int(y)) => Ok(Object::Float(x + y as f64)),
+                        (Object::Str(x), Object::Str(y)) => Ok(Object::Str(format!("{}{}", x, y))),
+                        (Object::Str(x), other) => Ok(Object::Str(format!("{}{}", x, other))),
+                        (other, Object::Str(y)) => Ok(Object::Str(format!("{}{}", other, y))),
+                        _ => Err("Unsupported types for Add".to_string()),
+                    })?
+                }
+                x if x == Opcode::OpSub as u8 => {
+                    let len = self.stack.len();
+                    if len >= 2 {
+                        if let (Object::Int(a), Object::Int(b)) = (&self.stack[len - 2], &self.stack[len - 1]) {
+                            let res = a - b;
+                            self.stack.pop();
+                            self.stack[len - 2] = Object::Int(res);
+                            continue;
+                        }
+                    }
+                    self.execute_binary_op(|a, b| match (a, b) {
+                        (Object::Int(x), Object::Int(y)) => Ok(Object::Int(x - y)),
+                        (Object::Float(x), Object::Float(y)) => Ok(Object::Float(x - y)),
+                        _ => Err("Unsupported types for Sub".to_string()),
+                    })?
+                }
+                x if x == Opcode::OpMul as u8 => {
+                    let len = self.stack.len();
+                    if len >= 2 {
+                        if let (Object::Int(a), Object::Int(b)) = (&self.stack[len - 2], &self.stack[len - 1]) {
+                            let res = a * b;
+                            self.stack.pop();
+                            self.stack[len - 2] = Object::Int(res);
+                            continue;
+                        }
+                    }
+                    self.execute_binary_op(|a, b| match (a, b) {
+                        (Object::Int(x), Object::Int(y)) => Ok(Object::Int(x * y)),
+                        (Object::Float(x), Object::Float(y)) => Ok(Object::Float(x * y)),
+                        _ => Err("Unsupported types for Mul".to_string()),
+                    })?
+                }
                 x if x == Opcode::OpDiv as u8 => self.execute_binary_op(|a, b| match (a, b) {
                     (Object::Int(x), Object::Int(y)) => {
                         if y == 0 { return Err("Division by zero in VM".to_string()); }
@@ -118,6 +157,9 @@ impl Vm {
                 }
                 x if x == Opcode::OpJump as u8 => {
                     let target = self.read_u16() as usize;
+                    if target <= self.ip {
+                        *self.hot_loops.entry(target).or_insert(0) += 1;
+                    }
                     self.ip = target;
                 }
                 x if x == Opcode::OpJumpIfFalse as u8 => {

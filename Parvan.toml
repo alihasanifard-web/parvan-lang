@@ -1,0 +1,7 @@
+[package]
+name = "parvan_app"
+version = "1.0.0"
+author = "Parvan Developer"
+
+[dependencies]
+web_router = "1.0.0"

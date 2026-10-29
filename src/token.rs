@@ -85,6 +85,17 @@ pub struct Token {
     pub column: usize,
 }
 
+impl Default for Token {
+    fn default() -> Self {
+        Self {
+            kind: TokenKind::Eof,
+            literal: String::new(),
+            line: 0,
+            column: 0,
+        }
+    }
+}
+
 impl Token {
     pub fn new(kind: TokenKind, literal: String, line: usize, column: usize) -> Self {
         Self { kind, literal, line, column }

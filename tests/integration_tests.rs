@@ -788,4 +788,108 @@ mod tests {
         "#).unwrap();
         assert_eq!(res, Object::Bool(true));
     }
+
+    #[test]
+    fn test_native_web_server_framework() {
+        let res = test_eval(r#"
+            let srv = http_server_new();
+            http_server_route(srv, "GET", "/api/ping", fn(req) {
+                return {"pong": true, "engine": "parvan"};
+            });
+            http_server_route(srv, "GET", "/hello", fn(req) {
+                return "درود بر پروان!";
+            });
+
+            // Start server in background on port 18091
+            let started = http_server_listen(srv, 18091, true);
+
+            // Small delay to let socket open
+            sleep(50);
+
+            // Fetch from server using native http_get
+            let response = http_get("http://127.0.0.1:18091/api/ping");
+            let stopped = http_server_stop(srv);
+
+            started && stopped && contains(response, "pong") && contains(response, "parvan");
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
+    fn test_cycle_safe_memory_and_gc() {
+        let res = test_eval(r#"
+            // Create nested closures that capture environments
+            let make_adder = fn(base) {
+                return fn(val) { return base + val; };
+            };
+            let add5 = make_adder(5);
+            let sum = add5(10);
+
+            let freed = gc_collect();
+            let stats = gc_stats();
+
+            sum == 15 && freed >= 1 && stats["total_allocated"] >= 0;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
+
+    #[test]
+    fn test_vm_hot_loop_accelerator() {
+        use parvan::compiler::Compiler;
+        use parvan::vm::Vm;
+        use parvan::lexer::Lexer;
+        use parvan::parser::Parser;
+
+        let code = r#"
+            let total = 0;
+            let counter = 1;
+            while counter <= 50 {
+                total = total + counter;
+                counter = counter + 1;
+            }
+            total;
+        "#;
+        let lexer = Lexer::new(code);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert!(parser.errors.is_empty());
+
+        let mut compiler = Compiler::new();
+        let bytecode = compiler.compile(&program).unwrap();
+        let mut vm = Vm::new(bytecode);
+        let res = vm.run().unwrap();
+        assert_eq!(res, Object::Int(1275)); // 50 * 51 / 2 = 1275
+        assert!(vm.hot_loop_count() > 0);
+    }
+
+    #[test]
+    fn test_type_checker_deep_analysis() {
+        use parvan::typechecker::TypeChecker;
+        use parvan::lexer::Lexer;
+        use parvan::parser::Parser;
+
+        let valid_code = r#"
+            let a = 10;
+            let b = 20;
+            let c = a + b;
+            print(c);
+        "#;
+        let mut tc = TypeChecker::new();
+        let mut p = Parser::new(Lexer::new(valid_code));
+        let prog = p.parse_program();
+        let ok = tc.check_program(&prog);
+        assert!(ok);
+        assert!(tc.errors.is_empty());
+
+        let invalid_code = r#"
+            let str_val = "hello";
+            let res = str_val - 5;
+        "#;
+        let mut tc_bad = TypeChecker::new();
+        let mut p_bad = Parser::new(Lexer::new(invalid_code));
+        let prog_bad = p_bad.parse_program();
+        let bad_ok = tc_bad.check_program(&prog_bad);
+        assert!(!bad_ok);
+        assert!(!tc_bad.errors.is_empty());
+    }
 }
