@@ -147,11 +147,13 @@
   <header>
     <div class="logo">
       <img src="logo.png" alt="Parvan Logo" />
-      <span>ParvanLang Web Playground</span>
-      <span class="badge">v3.0.0</span>
+      <span>ParvanLang Web Playground & Cloud IDE</span>
+      <span class="badge">v4.0.0</span>
     </div>
     <div class="controls">
       <select id="sampleSelect" onchange="loadSample(this.value)" style="background: #0f172a; color: #e2e8f0; border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-family: inherit; font-size: 0.82rem; outline: none; cursor: pointer;">
+        <option value="web_server">وب‌سرور چندترده بومی (REST API)</option>
+        <option value="unit_test">فریم‌ورک تست‌نویسی درون‌زبانی (Unit Tests)</option>
         <option value="enterprise">کد چندمنظوره (Enterprise)</option>
         <option value="persian">کد کاملاً فارسی (Bilingual Demo)</option>
         <option value="fibonacci">دنباله فیبوناچی (Recursion)</option>
@@ -225,7 +227,46 @@ print("تاریخ جاری:", today);
 
   <script>
     const SAMPLES = {
-      enterprise: `// ParvanLang v3.0.0 - Interactive Playground
+      web_server: `// وب‌سرور چندترده بومی پروان (Parvan Native Web Framework v4.0)
+let srv = http_server_new();
+
+http_server_route(srv, "GET", "/api/status", fn(req) {
+    return {
+        "status": "online",
+        "version": "4.0.0",
+        "engine": "Parvan Native Web Server",
+        "time": now()
+    };
+});
+
+http_server_route(srv, "GET", "/hello", fn(req) {
+    return "درود! این یک پاسخ مستقیم از وب‌سرور چندترده پروان است.";
+});
+
+print("وب‌سرور با مسیرهای /api/status و /hello با موفقیت تعریف شد.");
+print("شبیه‌سازی خروجی JSON مسیر /api/status:");
+print({
+    "status": "online",
+    "version": "4.0.0",
+    "engine": "Parvan Native Web Server",
+    "time": now()
+});`,
+
+      unit_test: `// فریم‌ورک تست‌نویسی درون‌زبانی پروان (In-Language Test Runner)
+test("بررسی صحت محاسبات پایه و ریاضی", fn() {
+    let sum = 25 + 75;
+    assert(sum == 100, "جمع باید ۱۰۰ باشد");
+    assert(sqrt(64) == 8, "جذر ۶۴ باید ۸ باشد");
+});
+
+test("بررسی متدهای رشته و الحاق", fn() {
+    let title = "پروان نسخه ۴";
+    assert(contains(title, "پروان"), "باید شامل کلمه پروان باشد");
+});
+
+print("تمامی آزمون‌های درون‌زبانی با موفقیت بررسی شدند.");`,
+
+      enterprise: `// ParvanLang v4.0.0 - Interactive Playground
 let app_name = "Parvan";
 let version = "3.0.0";
 

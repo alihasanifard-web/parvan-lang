@@ -905,4 +905,18 @@ mod tests {
         "#).unwrap();
         assert_eq!(res, Object::Bool(true));
     }
+
+    #[test]
+    fn test_native_desktop_gui_engine() {
+        let res = test_eval(r#"
+            let win = gui_window_new("برنامه حسابداری پروان", 700, 500);
+            let b = gui_add_button(win, "ارسال اطلاعات", fn() { return true; });
+            let l = gui_add_label(win, "خوش آمدید");
+            let i = gui_add_input(win, "نام خانوادگی را وارد کنید");
+            let s = gui_show(win, true); // true = headless mode for test verification
+
+            b && l && i && s && win["width"] == 700 && win["height"] == 500 && len(win["components"]) == 3;
+        "#).unwrap();
+        assert_eq!(res, Object::Bool(true));
+    }
 }

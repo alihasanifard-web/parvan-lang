@@ -5,3 +5,6 @@ author = "Parvan Developer"
 
 [dependencies]
 web_router = "1.0.0"
+jwt_auth = "1.0.0"
+sql_builder = "1.0.0"
+terminal_table = "1.0.0"

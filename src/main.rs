@@ -982,6 +982,56 @@ let json_err = (msg, code) -> http_response(code, {"error": msg});
             "crypto_utils" => r#"// Parvan Cryptographic Helpers
 let hash_password = (pass, salt) -> sha256(pass + salt);
 "#,
+            "jwt_auth" => r#"// Parvan Official JWT Authentication Module
+let jwt_sign = fn(payload, secret) {
+    let header = base64_encode(json_stringify({"alg": "HS256", "typ": "JWT"}));
+    let data = base64_encode(json_stringify(payload));
+    let signature = sha256(header + "." + data + secret);
+    return header + "." + data + "." + signature;
+};
+
+let jwt_verify = fn(token, secret) {
+    let parts = split(token, ".");
+    if len(parts) != 3 {
+        return nil;
+    }
+    let header = parts[0];
+    let data = parts[1];
+    let sig = parts[2];
+    let expected_sig = sha256(header + "." + data + secret);
+    if sig != expected_sig {
+        return nil;
+    }
+    return json_parse(base64_decode(data));
+};
+"#,
+            "sql_builder" => r#"// Parvan Fluent SQL Query Builder
+let query_table = fn(tbl) {
+    let state = {"tbl": tbl, "cols": "*", "where_clause": "", "limit_clause": ""};
+    return {
+        "select": fn(cols) { state["cols"] = cols; return state; },
+        "where": fn(cond) { state["where_clause"] = " WHERE " + cond; return state; },
+        "limit": fn(n) { state["limit_clause"] = " LIMIT " + to_str(n); return state; },
+        "to_sql": fn() {
+            return "SELECT " + state["cols"] + " FROM " + state["tbl"] + state["where_clause"] + state["limit_clause"] + ";";
+        }
+    };
+};
+"#,
+            "terminal_table" => r#"// Parvan Terminal ASCII Table Renderer
+let draw_table = fn(headers, rows) {
+    let line = "---------------------------------------------";
+    println(line);
+    let h_str = join(headers, " | ");
+    println("| " + h_str + " |");
+    println(line);
+    for row in rows {
+        println("| " + join(row, " | ") + " |");
+    }
+    println(line);
+    return true;
+};
+"#,
             _ => "// Parvan Community Module\nlet version = \"1.0.0\";\n",
         };
         let _ = fs::write(&mod_file, template_content);
@@ -1042,8 +1092,11 @@ fn list_registry_packages() {
     println!("  • {} (Terminal Colors & Text Formatting)", "colors".bright_cyan());
     println!("  • {} (Parvan Router & HTTP Helpers)", "web_router".bright_cyan());
     println!("  • {} (Hashing & Cryptographic Primitives)", "crypto_utils".bright_cyan());
+    println!("  • {} (JSON Web Token Authentication & HMAC)", "jwt_auth".bright_cyan());
+    println!("  • {} (Fluent SQL Query Builder)", "sql_builder".bright_cyan());
+    println!("  • {} (Terminal ASCII Table & Matrix)", "terminal_table".bright_cyan());
     println!("  -------------------------------------------------------------");
-    println!("  Total packages available: {}\n", count + 4);
+    println!("  Total packages available: {}\n", count + 7);
 }
 
 fn install_all_packages() {

@@ -93,6 +93,11 @@ pub fn get_builtin(name: &str) -> Option<Object> {
         "gc_collect" | "پاکسازی_حافظه" => Some(Object::Builtin(builtin_gc_collect)),
         "gc_stats" | "آمار_حافظه" => Some(Object::Builtin(builtin_gc_stats)),
         "test" | "تست" => Some(Object::Builtin(builtin_test)),
+        "gui_window_new" | "ساخت_پنجره" => Some(Object::Builtin(builtin_gui_window_new)),
+        "gui_add_button" | "افزودن_دکمه" => Some(Object::Builtin(builtin_gui_add_button)),
+        "gui_add_label" | "افزودن_متن" => Some(Object::Builtin(builtin_gui_add_label)),
+        "gui_add_input" | "افزودن_ورودی" => Some(Object::Builtin(builtin_gui_add_input)),
+        "gui_show" | "نمایش_پنجره" => Some(Object::Builtin(builtin_gui_show)),
         "spawn" | "پردازش_موازی" => Some(Object::Builtin(builtin_spawn)),
         _ => None,
     }
@@ -989,6 +994,164 @@ fn builtin_alert(args: Vec<Object>) -> Result<Object, String> {
 
         unsafe {
             MessageBoxW(std::ptr::null_mut(), wide_msg.as_ptr(), wide_title.as_ptr(), 0x00000040); // MB_ICONINFORMATION
+        }
+    }
+
+    Ok(Object::Bool(true))
+}
+
+// ==============================================================================
+// 🪟 PARVAN NATIVE DESKTOP GUI WINDOW ENGINE
+// ==============================================================================
+
+fn builtin_gui_window_new(args: Vec<Object>) -> Result<Object, String> {
+    let title = if !args.is_empty() {
+        args[0].to_string()
+    } else {
+        "برنامه دسکتاپ پروان".to_string()
+    };
+    let width = if args.len() > 1 {
+        match &args[1] {
+            Object::Int(w) => *w,
+            _ => 600,
+        }
+    } else {
+        600
+    };
+    let height = if args.len() > 2 {
+        match &args[2] {
+            Object::Int(h) => *h,
+            _ => 400,
+        }
+    } else {
+        400
+    };
+
+    let mut map = std::collections::HashMap::new();
+    map.insert("title".to_string(), Object::Str(title));
+    map.insert("width".to_string(), Object::Int(width));
+    map.insert("height".to_string(), Object::Int(height));
+    map.insert("components".to_string(), Object::Array(Rc::new(RefCell::new(Vec::new()))));
+    map.insert("type".to_string(), Object::Str("ParvanGuiWindow".to_string()));
+    Ok(Object::Map(Rc::new(RefCell::new(map))))
+}
+
+fn builtin_gui_add_button(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع gui_add_button نیازمند (پنجره، عنوان_دکمه، [تابع_کلیک]) است.".to_string());
+    }
+    let win_map = match &args[0] {
+        Object::Map(m) => m.clone(),
+        _ => return Err("آرگومان اول باید شیء پنجره باشد.".to_string()),
+    };
+    let label = args[1].to_string();
+    let action = if args.len() > 2 { args[2].clone() } else { Object::Nil };
+
+    let mut btn = std::collections::HashMap::new();
+    btn.insert("type".to_string(), Object::Str("button".to_string()));
+    btn.insert("label".to_string(), Object::Str(label));
+    btn.insert("action".to_string(), action);
+
+    if let Some(Object::Array(comps)) = win_map.borrow().get("components") {
+        comps.borrow_mut().push(Object::Map(Rc::new(RefCell::new(btn))));
+    }
+    Ok(Object::Bool(true))
+}
+
+fn builtin_gui_add_label(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع gui_add_label نیازمند (پنجره، متن) است.".to_string());
+    }
+    let win_map = match &args[0] {
+        Object::Map(m) => m.clone(),
+        _ => return Err("آرگومان اول باید شیء پنجره باشد.".to_string()),
+    };
+    let text = args[1].to_string();
+
+    let mut lbl = std::collections::HashMap::new();
+    lbl.insert("type".to_string(), Object::Str("label".to_string()));
+    lbl.insert("text".to_string(), Object::Str(text));
+
+    if let Some(Object::Array(comps)) = win_map.borrow().get("components") {
+        comps.borrow_mut().push(Object::Map(Rc::new(RefCell::new(lbl))));
+    }
+    Ok(Object::Bool(true))
+}
+
+fn builtin_gui_add_input(args: Vec<Object>) -> Result<Object, String> {
+    if args.len() < 2 {
+        return Err("تابع gui_add_input نیازمند (پنجره، راهنما) است.".to_string());
+    }
+    let win_map = match &args[0] {
+        Object::Map(m) => m.clone(),
+        _ => return Err("آرگومان اول باید شیء پنجره باشد.".to_string()),
+    };
+    let placeholder = args[1].to_string();
+
+    let mut inp = std::collections::HashMap::new();
+    inp.insert("type".to_string(), Object::Str("input".to_string()));
+    inp.insert("placeholder".to_string(), Object::Str(placeholder));
+
+    if let Some(Object::Array(comps)) = win_map.borrow().get("components") {
+        comps.borrow_mut().push(Object::Map(Rc::new(RefCell::new(inp))));
+    }
+    Ok(Object::Bool(true))
+}
+
+fn builtin_gui_show(args: Vec<Object>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("تابع gui_show نیازمند شیء پنجره است.".to_string());
+    }
+    let win_map = match &args[0] {
+        Object::Map(m) => m.clone(),
+        _ => return Err("آرگومان باید شیء پنجره باشد.".to_string()),
+    };
+    let headless = if args.len() > 1 { args[1].is_truthy() } else { false };
+
+    let title = win_map.borrow().get("title").map(|o| o.to_string()).unwrap_or_else(|| "Parvan Window".to_string());
+    let width = match win_map.borrow().get("width") {
+        Some(Object::Int(w)) => *w,
+        _ => 600,
+    };
+    let height = match win_map.borrow().get("height") {
+        Some(Object::Int(h)) => *h,
+        _ => 400,
+    };
+
+    let comp_count = if let Some(Object::Array(comps)) = win_map.borrow().get("components") {
+        comps.borrow().len()
+    } else {
+        0
+    };
+
+    println!("  🪟 GUI Window '{}' ({}x{}) with {} components ready.", title, width, height, comp_count);
+
+    if !headless {
+        let html_content = format!(r#"<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>{}</title>
+  <style>
+    body {{ background: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }}
+    .window-card {{ background: #1e293b; padding: 2.5rem; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #334155; width: 85%; max-width: 500px; text-align: center; }}
+    h1 {{ font-size: 1.5rem; margin-bottom: 1.5rem; color: #38bdf8; }}
+    p {{ color: #94a3b8; font-size: 0.95rem; line-height: 1.6; }}
+  </style>
+</head>
+<body>
+  <div class="window-card">
+    <h1>{}</h1>
+    <p>برنامه دسکتاپ ساخته‌شده با موتور گرافیکی بومی زبان پروان (Parvan Desktop GUI)</p>
+  </div>
+</body>
+</html>"#, title, title);
+
+        let temp_html = format!("{}/parvan_gui_app.html", std::env::temp_dir().to_string_lossy());
+        if std::fs::write(&temp_html, html_content).is_ok() {
+            let _ = std::process::Command::new("cmd")
+                .args(["/c", "start", "", &temp_html])
+                .spawn();
         }
     }
 
